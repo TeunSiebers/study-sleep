@@ -1,5 +1,5 @@
 # >>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>----
-# project:         digital trace.Rproj
+# project:         study-sleepRproj
 # title:           1. filter apk usage data.R
 # date created:    Mon Feb  6 08:49:12 2023
 # last updated:    Mon Feb  6 08:49:12 2023

@@ -1,5 +1,5 @@
 # >>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>----
-# project:         datman_sleep paper.Rproj
+# project:         study-sleep.Rproj
 # title:           explore logdata.R
 # date created:    
 # last updated:    

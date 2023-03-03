@@ -1,5 +1,5 @@
 # >>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>----
-# project:         digital trace.Rproj
+# project:         study-sleep.Rproj
 # title:           2. read files.R
 # date created:    2022-07-20 12:15:14 CEST
 # last updated:    Tue Sep 20 12:59:44 2022
