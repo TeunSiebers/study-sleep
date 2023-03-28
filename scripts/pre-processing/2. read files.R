@@ -2,11 +2,9 @@
 # project:         study-sleep.Rproj
 # title:           2. read files.R
 # date created:    2022-07-20 12:15:14 CEST
-# last updated:    Tue Sep 20 12:59:44 2022
+# description:
+# ...
 # ---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>
-
-# remove all variables (start from scratch)
-rm(list = ls())
 
 # load packages
 library(tidyverse)
@@ -18,7 +16,7 @@ library(vroom)
 # read data files ---------------------------------------------------------
 
 # list the files in the processed chunks folder
-files <- list.files("input/processed chunks", full.names = T)
+files <- list.files("data/input/processed chunks", full.names = T)
 
 # specify column classes
 s <- cols(
@@ -77,7 +75,7 @@ app_data <- apk_usage_dur %>%
 # path: ~Alle bestanden/Awesome (Projectfolder)/ESM surveys - Cleaned/KeyIDFile.csv
 
 # load ID key file
-key_id <- read_csv2("input/KeyIDFile.csv") %>%
+key_id <- read_csv2("data/input/KeyIDFile.csv") %>%
   transmute(ID, user_id = as.character(ID_ethica))
 
 # change Ethica IDs into usable IDs for app usage data
@@ -104,4 +102,4 @@ df %>%
 
 # write app dataframe -----------------------------------------------------
 
-if(F) write_csv2(df, "input/cleaned_logdata.csv")
+if(F) write_csv2(df, "data/processed/cleaned_logdata.csv")
