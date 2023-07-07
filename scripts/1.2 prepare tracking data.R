@@ -1,9 +1,13 @@
 # >>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>----
 # project:         study-sleep.Rproj
-# title:           2. read files.R
-# date created:    2022-07-20 12:15:14 CEST
+# title:           1.2 prepare tracking data.R
+#
 # description:
-# ...
+# This script merges the three processed chunks from the raw datafile. It 
+# adds two hours to compensate for the different timezone, and generates 
+# durations per app activity and filters out all app activities that last 0 
+# sec or less. Finally, it changes the Ethica IDs into participants IDs via
+# the keyfile. 
 # ---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>
 
 # load packages
@@ -16,7 +20,7 @@ library(vroom)
 # read data files ---------------------------------------------------------
 
 # list the files in the processed chunks folder
-files <- list.files("data/input/processed chunks", full.names = T)
+files <- list.files("data/processed/processed chunks/", full.names = T)
 
 # specify column classes
 s <- cols(
@@ -35,7 +39,7 @@ apk_usage <- map_df(files, vroom, col_types = s) %>%
 
 # correct times -----------------------------------------------------------
 
-# correct the timestamps by adding two hours
+# correct the timestamps by adding two hours due to different timezone
 apk_usage_time <- apk_usage %>% 
   mutate(last_used = last_used + dhours(2))
 
@@ -95,11 +99,11 @@ df %>%
   group_by(user_id, day) %>% 
   filter(start_segment == min(start_segment)) %>% 
   transmute(user_id, date = day, apk, start_segment) %>% 
-  left_join(read_csv2("input/cleaned esm data - wave2_no attrition.csv") %>% 
+  left_join(read_csv2("data/input/cleaned esm data - wave2_no attrition.csv") %>% 
               transmute(user_id = ID, date = as_date(TmSchE2), SLE03E2) %>% 
               na.omit(), by = c("user_id", "date"))
 
 
 # write app dataframe -----------------------------------------------------
 
-if(F) write_csv2(df, "data/processed/cleaned_logdata.csv")
+if(F) write_csv(df, "data/processed/cleaned_logdata.csv")

@@ -1,9 +1,11 @@
 # >>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>----
 # project:         study-sleepRproj
-# title:           1. filter apk usage data.R
-# date created:    Mon Feb  6 08:49:12 2023
+# title:           1.1 filter raw tracking data.R
+#
 # description:
-# ...
+# This script reads the raw input file from the app usage data (+- 130M rows), 
+# filters foreground times that are 0 or less, and exports the remaining part 
+# (+- 19M rows) in three chunks for further usage.
 # ---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>
 
 # load packages
