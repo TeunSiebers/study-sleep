@@ -37,7 +37,7 @@ table(sample_details$Sex) # anders: 1, jongen: 80, meisje: 74
 prop.table(table(sample_details$Sex)) # anders: 0.6%, jongen: 51,6%, meisje: 47,7%
 
 
-# compliance --------------------------------------------------------------
+# calculate compliance ----------------------------------------------------
 
 # calculate overall compliance
 study_rows <- esm2 %>% 
