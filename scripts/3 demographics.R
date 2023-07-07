@@ -40,11 +40,21 @@ prop.table(table(sample_details$Sex)) # anders: 0.6%, jongen: 51,6%, meisje: 47,
 # compliance --------------------------------------------------------------
 
 # calculate overall compliance
-esm2 %>% 
+study_rows <- esm2 %>% 
   select(ID, BeepTE2, StateE2, SLE01E2) %>% 
-  filter(BeepTE2 == 1, SLE01E2 %in% c(1:7)) %>% 
+  filter(BeepTE2 == 1)
+
+# total surveys sent out
+study_rows %>% nrow # 3255
+
+# total surveys completed
+study_rows %>% 
+  filter(SLE01E2 %in% c(1:7)) %>% 
   group_by(SLE01E2) %>% 
-  count() %>% .$n %>% sum
+  count() %>% .$n %>% sum # 1950
+
+# overall compliance
+1950/3255 # = 60%
 
 # calculate average compliance
 compl_per_person <- esm2 %>% 
