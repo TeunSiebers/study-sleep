@@ -113,6 +113,7 @@ if(F) ggplot(data = timeframes) +
   geom_linerange(aes(xmin = bt_yes, xmax = wt_today, y = user_id), color = "green2")
 
 # merge phone and sleep data ----------------------------------------------
+# 1,859 obs.; N = 156
 
 # use foverlap(), from data.table package to find overlap in both dataframes
 # transform phone and timeframes df into data.table and set key values for x 
@@ -122,7 +123,7 @@ if(F) ggplot(data = timeframes) +
 x_day <- as.data.table(x = phone, key = c("user_id", "start_segment", "end_segment"))
 y_day <- as.data.table(x = timeframes, key = c("user_id", "wt_yes", "hbefore_bt_yes"))
 
-# find overlap in both dfs
+# find overlap in both dfs: 368,360 obs.; N = 155
 df_day <- foverlaps(y_day, x_day, type = "any") %>% 
   as_tibble() %>% 
   mutate(start_segment = as_datetime(ifelse(start_segment < wt_yes, wt_yes, start_segment)),
@@ -136,7 +137,7 @@ df_day <- foverlaps(y_day, x_day, type = "any") %>%
 x_pre <- as.data.table(x = phone, key = c("user_id", "start_segment", "end_segment"))
 y_pre <- as.data.table(x = timeframes, key = c("user_id", "hbefore_bt_yes", "bt_yes"))
 
-# find overlap in both dfs
+# find overlap in both dfs: 26,155 obs.; N = 155
 df_pre <- foverlaps(y_pre, x_pre, type = "any") %>% 
   as_tibble() %>% 
   mutate(start_segment = as_datetime(ifelse(start_segment < hbefore_bt_yes, hbefore_bt_yes, start_segment)),
@@ -150,7 +151,7 @@ df_pre <- foverlaps(y_pre, x_pre, type = "any") %>%
 x_post <- as.data.table(x = phone, key = c("user_id", "start_segment", "end_segment"))
 y_post <- as.data.table(x = timeframes, key = c("user_id", "bt_yes", "wt_today"))
 
-# find overlap in both dfs
+# find overlap in both dfs: 20,390 obs.; N = 155
 df_post <- foverlaps(y_post, x_post, type = "any") %>% 
   as_tibble() %>% 
   mutate(start_segment = as_datetime(ifelse(start_segment < bt_yes, bt_yes, start_segment)),
@@ -163,18 +164,21 @@ df_post <- foverlaps(y_post, x_post, type = "any") %>%
 full_df <- bind_rows(df_day, df_pre, df_post) %>% 
   select(-day)
 
-full_df %>% 
-  group_by(user_id, date_res, timeframe) %>% 
-  summarise(total_dur = sum(duration, na.rm = T))
-
 # long to wide format -----------------------------------------------------
+# 414,905 obs.; N = 155
 
-full_df <- df %>% 
+# sum durations within each timeframe
+df <- full_df %>% 
+  group_by(user_id, date_res, timeframe) %>% 
+  summarise(total_dur = as.numeric(sum(duration, na.rm = T)) / 60 / 60)
+
+final_df <- df %>% 
   arrange(user_id, date_res) %>% 
   group_by(user_id, date_res) %>% 
   pivot_wider(names_from = timeframe, values_from = total_dur)
 
-
+# save user_ids for extracting demographic information later
+if(F) full_df$user_id %>% unique %>% write.table(file = "data/processed/user_ids.txt")
 
 
 # variable descriptives ---------------------------------------------------
