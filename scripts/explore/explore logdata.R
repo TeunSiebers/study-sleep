@@ -165,7 +165,7 @@ sleep <- read_csv2("data/processed/sleepdata.csv") %>%
 
 # how a full dataframe looks like
 full_sleep_df <- crossing(user_id = unique(sleep$user_id), 
-         date_res = seq(as_date("2020-06-02"), as_date("2020-06-23"), 1))
+         date_res = seq(as_date("2020-06-01"), as_date("2020-06-23"), 1))
 
 # merge existing sleep data with full sleep df to generate missing rows
 sleep_df <- full_join(sleep, full_sleep_df) %>% arrange(user_id, date_res) %>% 

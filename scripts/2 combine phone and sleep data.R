@@ -25,7 +25,7 @@ sleep <- read_csv("data/processed/sleepdata.csv") %>%
   select(!matches("correct_"))
 
 # read smartphone use data (tracking)
-# N = 156; 721,033 obs.
+# N = 156; 626,917 obs.
 phone <- read_csv("data/processed/cleaned_logdata.csv") %>% # N = 160; 733,359 obs.in 'cleaned_logdata.csv'
   filter(user_id %in% unique(sleep$user_id)) %>% 
   arrange(user_id, start_segment)
@@ -112,6 +112,7 @@ if(F) ggplot(data = timeframes) +
   geom_linerange(aes(xmin = hbefore_bt_yes, xmax = bt_yes, y = user_id), color = "blue1") + 
   geom_linerange(aes(xmin = bt_yes, xmax = wt_today, y = user_id), color = "green2")
 
+
 # merge phone and sleep data ----------------------------------------------
 # 1,859 obs.; N = 156
 
@@ -162,27 +163,32 @@ df_post <- foverlaps(y_post, x_post, type = "any") %>%
 
 # nest trace data in survey df 
 full_df <- bind_rows(df_day, df_pre, df_post) %>% 
+  arrange(user_id, start_segment) %>% 
   select(-day)
 
-# long to wide format -----------------------------------------------------
-# 414,905 obs.; N = 155
 
-# sum durations within each timeframe
+# long to wide format -----------------------------------------------------
+# 346,510 obs.; N = 155
+
+# sum durations in hours within each timeframe
 df <- full_df %>% 
-  group_by(user_id, date_res, timeframe) %>% 
+  group_by(user_id, date_res, timeframe, sleep_qual) %>% # keep sleep quality in the dataset
   summarise(total_dur = as.numeric(sum(duration, na.rm = T)) / 60 / 60)
 
-final_df <- df %>% 
-  arrange(user_id, date_res) %>% 
-  group_by(user_id, date_res) %>% 
-  pivot_wider(names_from = timeframe, values_from = total_dur)
+# change to wider format
+dur_df <- df %>% 
+  group_by(user_id, date_res, sleep_qual) %>% # keep sleep quality in the dataset
+  pivot_wider(names_from = timeframe, values_from = total_dur) %>% # change long format into wide format
+  mutate_at(vars(daytime_use, prebed_use, postbed_use), ~replace(., is.na(.), 0)) # replace missings by 0 seconds
 
 # save user_ids for extracting demographic information later
-if(F) full_df$user_id %>% unique %>% write.table(file = "data/processed/user_ids.txt")
+if(F) dur_df$user_id %>% unique %>% write.table(file = "data/processed/user_ids.txt")
+
+unique(full_df$app_cat)
 
 
 # variable descriptives ---------------------------------------------------
 
-full_df %>% 
+dur_df %>% 
   select(sleep_qual, daytime_use, prebed_use, postbed_use) %>% 
   vtable::sumtable()
