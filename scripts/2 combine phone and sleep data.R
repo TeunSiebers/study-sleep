@@ -120,7 +120,7 @@ if(F) ggplot(data = timeframes) +
 # transform phone and timeframes df into data.table and set key values for x 
 # and y, i.e., sort ID and times in the data.tables
 
-# DAYTIME USE
+#-----> DAYTIME USE
 x_day <- as.data.table(x = phone, key = c("user_id", "start_segment", "end_segment"))
 y_day <- as.data.table(x = timeframes, key = c("user_id", "wt_yes", "hbefore_bt_yes"))
 
@@ -133,8 +133,7 @@ df_day <- foverlaps(y_day, x_day, type = "any") %>%
          timeframe = "daytime_use") %>% 
   na.omit()
 
-
-# PRE-BEDTIME USE
+#-----> PRE-BEDTIME USE
 x_pre <- as.data.table(x = phone, key = c("user_id", "start_segment", "end_segment"))
 y_pre <- as.data.table(x = timeframes, key = c("user_id", "hbefore_bt_yes", "bt_yes"))
 
@@ -147,8 +146,7 @@ df_pre <- foverlaps(y_pre, x_pre, type = "any") %>%
          timeframe = "prebed_use") %>% 
   na.omit()
 
-
-# POST-BEDTIME USE
+#-----> POST-BEDTIME USE
 x_post <- as.data.table(x = phone, key = c("user_id", "start_segment", "end_segment"))
 y_post <- as.data.table(x = timeframes, key = c("user_id", "bt_yes", "wt_today"))
 
@@ -179,16 +177,31 @@ df <- full_df %>%
 dur_df <- df %>% 
   group_by(user_id, date_res, sleep_qual) %>% # keep sleep quality in the dataset
   pivot_wider(names_from = timeframe, values_from = total_dur) %>% # change long format into wide format
-  mutate_at(vars(daytime_use, prebed_use, postbed_use), ~replace(., is.na(.), 0)) # replace missings by 0 seconds
-
+  mutate_at(vars(daytime_use, prebed_use, postbed_use), ~replace(., is.na(.), 0)) %>%  # replace missings by 0 seconds
+  relocate(sleep_qual, .after = postbed_use) %>% 
+  ungroup()
+  
 # save user_ids for extracting demographic information later
 if(F) dur_df$user_id %>% unique %>% write.table(file = "data/processed/user_ids.txt")
 
-unique(full_df$app_cat)
 
+# save file for Figshare and Mplus ----------------------------------------
 
-# variable descriptives ---------------------------------------------------
+# create time variable, indicating the days of the study
+mplus <- dur_df %>% 
+  mutate(study_day = as.numeric(date_res - as_date("2020-06-02")), 
+         .after = user_id) %>% 
+  select(-date_res)
 
-dur_df %>% 
-  select(sleep_qual, daytime_use, prebed_use, postbed_use) %>% 
-  vtable::sumtable()
+# save as .csv file for Figshare
+if(F) write_csv(mplus, "data/output/mplus.csv")
+
+# save as .dat file
+if(F) mplus %>% 
+  select(user_id, study_day, daytime_use, prebed_use, postbed_use, sleep_qual) %>% 
+  arrange(user_id, study_day) %>% 
+  write.table("data/output/mplus.dat", 
+              sep = "\t",
+              dec = ".",
+              row.names = FALSE,
+              col.names = FALSE)

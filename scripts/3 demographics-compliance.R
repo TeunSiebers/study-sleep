@@ -25,8 +25,7 @@ sample_details <- esm2 %>%
   select(ID, Sex, BirthD, ETH01, ETH03, EduLevel) %>% 
   unique() %>% 
   mutate(age = time_length(difftime(as_date("2020-06-02"), BirthD), 
-                           unit = "years")) %>% 
-  filter(ID %in% user_ids)
+                           unit = "years"))
 
 #  155 obs. N = 155
 mean(sample_details$age) # 14.54
@@ -46,6 +45,12 @@ study_rows <- esm2 %>%
 
 # total surveys sent out
 study_rows %>% nrow # 3255
+
+# total surveys completed
+study_rows %>% 
+  filter(SLE01E2 %in% c(1:7)) %>% 
+  group_by(SLE01E2) %>% 
+  count() %>% .$n %>% sum # 1950
 
 # total surveys completed
 study_rows %>% 

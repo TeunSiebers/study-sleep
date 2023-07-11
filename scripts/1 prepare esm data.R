@@ -81,6 +81,7 @@ swap_to_wt <- function(bt, wt) {
   
   ifelse((bt_num > 0 & bt_num < 12) & (wt_num > 12 & wt_num < 24), wt, bt)
 }
+
 swap_to_bt <- function(bt, wt) {
   bt_num <- as.numeric(str_extract(as.character(bt), "[0-9]+"))
   wt_num <- as.numeric(str_extract(as.character(wt), "[0-9]+"))
@@ -96,6 +97,7 @@ esm2_swapped <- esm2_filter %>%
          wake_item = swap_to_bt(bed_item_temp, wake_item) %>% 
            as_datetime() %>% format("%H:%M")) %>% 
   select(-bed_item_temp)
+
 
 # change time responses (hours and minutes) into datetime formats ---------
 
@@ -128,7 +130,7 @@ esm2 <- esm2_swapped %>%
 # survey response time are about equal to bedtime and wake-up time
 false <- esm2 %>% 
   filter(bt_yes_temp < time_res + dminutes(3) & bt_yes_temp > time_res - dminutes(3) |
-         bt_yes_temp < wt_today + dminutes(3) & bt_yes_temp > wt_today - dminutes(3)) # 71 obs.
+         bt_yes_temp < wt_today + dminutes(3) & bt_yes_temp > wt_today - dminutes(3)) # 65 obs.
 
 # categorize correctness of answer responses
 esm2_cat <- esm2 %>% 
@@ -149,14 +151,13 @@ esm2_cat <- esm2 %>%
 esm2_df <- esm2_cat %>% 
   mutate(
     bt_yes = case_when(
-      correct_bedtime == "12-24h clock confused" ~ bt_yes + dhours(12), 
+      correct_bedtime == "12-24h clock confused" & hour(time_res) > as.numeric(str_extract(bed_item, "[0-9][0-9]")) ~ bt_yes - dhours(12), 
+      correct_bedtime == "12-24h clock confused" & hour(time_res) <= as.numeric(str_extract(bed_item, "[0-9][0-9]")) ~ bt_yes + dhours(12), 
       correct_bedtime == "incorrect" ~ NA,
-      TRUE ~ bt_yes,
-      ),
+      TRUE ~ bt_yes),
     bt_yes = case_when(
       bt_yes > wt_today ~ bt_yes - ddays(1), # correction for 12-24h clock confusion when bed_item is before wake_item
-      TRUE ~ bt_yes
-    ),
+      TRUE ~ bt_yes),
     wt_today = case_when(
       correct_waketime == "incorrect" ~ NA,
       TRUE ~ wt_today),

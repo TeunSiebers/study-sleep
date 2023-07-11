@@ -125,8 +125,11 @@ df_app %>%
   summarise(sum_dur = sum(duration, na.rm = T)) %>% 
   arrange(desc(sum_dur))
 
-# filter out actitivites of apps that are not recognized by Google Playstore
+# filter out activities of apps that are not recognized by Google Playstore
 df_Gapp <- filter(df_app, !is.na(app_name))
+
+# how much percent of the total tracking dataset (758,558 obs.)?
+1- nrow(df_Gapp)/nrow(df_app) # 16%
 
 
 # filter out outliers -----------------------------------------------------
@@ -144,11 +147,14 @@ cutoff <- df_Gapp %>%
 
 df_Gapp_out <- filter(df_Gapp, !duration > cutoff)
 
+# how much percent of the reduced tracking dataset (637,178 obs.)?
+1- nrow(df_Gapp_out)/nrow(df_Gapp) # 0.02%
+
 
 # filter out overlap in app activities ------------------------------------
 # 636,846 obs.
 
-# cutoff end_segment times if next app activity starts
+# cut off end_segment times if next app activity starts
 df_final <- df_Gapp_out %>% 
   group_by(user_id) %>% 
   arrange(user_id, start_segment) %>% 
@@ -159,8 +165,17 @@ df_final <- df_Gapp_out %>%
   filter(duration > 0) %>% 
   arrange(user_id, start_segment)
 
+# how much observations came from Ethica itself?
+filter(df_final, str_detect(apk, "ethica")) %>% nrow() / nrow(df_final) # 3.39%
 
-# write app dataframe -----------------------------------------------------
+
+# save final dataset ------------------------------------------------------
 # 615,075 obs.
 
+# save final dataset as .csv
 if(F) write_csv(df_final, "data/processed/cleaned_logdata.csv")
+
+
+
+
+
