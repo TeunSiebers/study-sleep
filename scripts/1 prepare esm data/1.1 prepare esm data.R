@@ -1,6 +1,6 @@
 # >>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>----
 # project:         study-sleep.Rproj
-# title:           1 prepare esm data.R
+# title:           1.1 prepare esm data.R
 #
 # description:
 # This script reads the sleep data from the ESM, filters out missings, and 

@@ -6,15 +6,16 @@
 # This script merges the three processed chunks from the raw datafile. It 
 # adds two hours to compensate for the different timezone, and generates 
 # durations per app activity and filters out all app activities that last 0 
-# sec or less. Finally, it changes the Ethica IDs into participants IDs via
-# the keyfile. 
+# sec or less. It then changes the Ethica IDs into participants IDs via
+# the keyfile, and finally adds app name and category to each activitiy based
+# on the Google Playstore.
 # ---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>---->>>>
 
 # load packages
 library(tidyverse)
 library(lubridate)
 library(reticulate)
-library(vroom)
+library(vroom) # for loading files with vroom
 
 
 # read data files ---------------------------------------------------------
@@ -52,12 +53,12 @@ apk_usage_dur <- apk_usage_time %>%
   group_by(user_id, apk, start_time) %>%
   arrange(last_used) %>% 
   mutate(duration = c(fg_time_ms[1], diff(fg_time_ms)) %>% milliseconds(),
-         start_segment = last_used - duration,
-         end_segment = last_used,
+         start = last_used - duration,
+         end = last_used,
          duration = str_remove(duration, "[Ss]$") %>% as.double()) %>% 
   ungroup() %>%
-  select(user_id, apk, start_segment, duration, end_segment) %>%
-  arrange(user_id, start_segment)
+  select(user_id, apk, start, duration, end) %>%
+  arrange(user_id, start)
 
 
 # filter ------------------------------------------------------------------
@@ -66,12 +67,16 @@ apk_usage_dur <- apk_usage_time %>%
 # filter negative and 0-durations, and include only study days
 app_data <- apk_usage_dur %>% 
   filter(duration > 0) %>% # filter out durations lower than or equal to 0
-  mutate(day = as_date(start_segment)) %>% # filter only data from start to end of the study
-  filter(day >= "2020-06-01", day <= "2020-06-23")
+  filter(as_date(end) >= "2020-06-01", as_date(start) <= "2020-06-23") %>% 
+  mutate(start = ifelse(as_date(start) < as_date("2020-06-01"), 
+                        as_datetime("2020-06-01 00:00:00"), start) %>% as_datetime,
+         end = ifelse(as_date(end) > as_date("2020-06-23"), 
+                      as_datetime("2020-06-23 23:59:59"), end) %>% as_datetime) %>% 
+  arrange(user_id, start)
 
 
 # change IDs --------------------------------------------------------------
-# 778,456 obs.
+# 778,544 obs.; N = 166
 
 # The IDs in the digital trace data did not yet match the anonymized IDs
 # that were used in the surveys. Therefore, the file KeyIDFile.csv was 
@@ -88,11 +93,12 @@ df <- app_data %>%
   left_join(key_id, by = "user_id") %>% 
   mutate(user_id = ID) %>% 
   filter(!is.na(user_id)) %>% 
-  select(-ID)
+  select(-ID) %>% 
+  arrange(user_id, start)
 
 
-# filter out apps that are not in the Google Playstore --------------------
-# 758,558 obs.
+# bind with Google Playstore ---------------------------------------------
+# 758,646 obs.; N = 155
 
 # create function to scrape app name and category based on apk
 if(F) { 
@@ -118,64 +124,27 @@ df_app <- df %>%
   left_join(apk_lookup) %>% 
   mutate(app_cat = ifelse(app_cat %in% game_cats, "Gaming", app_cat))
 
-# show apps that are not in Google playstore
+
+# inspect dataset including app names and categories ----------------------
+# 758,646 obs.; N = 155
+
+# how much observations came from Ethica itself?
+df_app %>% 
+  filter(str_detect(apk, "ethica")) %>% nrow() / nrow(df_app) * 100 # 2.85%
+
+# show durations of apps that are not in Google playstore
 df_app %>% 
   filter(is.na(app_name)) %>% 
   group_by(apk) %>% 
   summarise(sum_dur = sum(duration, na.rm = T)) %>% 
   arrange(desc(sum_dur))
 
-# filter out activities of apps that are not recognized by Google Playstore
-df_Gapp <- filter(df_app, !is.na(app_name))
-
 # how much percent of the total tracking dataset (758,558 obs.)?
-1- nrow(df_Gapp)/nrow(df_app) # 16%
+(1- (nrow(filter(df_app, !is.na(app_name))) / nrow(df_app))) * 100 # 16%
+  
 
+# save app usage dataset with app name and category -----------------------
+# 758,646 obs.; N = 155
 
-# filter out outliers -----------------------------------------------------
-# 637,178 obs. 
-
-# some app activities are extremely large:
-df_Gapp %>% arrange(desc(duration))
-
-# therefore, we will exclude the app activities that lasted longer than the 0.1% 
-# longest app activities in the Video and Gaming category (i.e., longer than 4.8 hours)
-cutoff <- df_Gapp %>% 
-  filter(app_cat %in% c("Video Players & Editors", "Gaming")) %>% 
-  .$duration %>% 
-  quantile(.999)
-
-df_Gapp_out <- filter(df_Gapp, !duration > cutoff)
-
-# how much percent of the reduced tracking dataset (637,178 obs.)?
-1- nrow(df_Gapp_out)/nrow(df_Gapp) # 0.02%
-
-
-# filter out overlap in app activities ------------------------------------
-# 636,846 obs.
-
-# cut off end_segment times if next app activity starts
-df_final <- df_Gapp_out %>% 
-  group_by(user_id) %>% 
-  arrange(user_id, start_segment) %>% 
-  mutate(end_segment = ifelse(lead(start_segment) < end_segment, 
-                              lead(start_segment), 
-                              end_segment) %>% as_datetime) %>% 
-  mutate(duration = as.numeric(end_segment-start_segment)) %>% 
-  filter(duration > 0) %>% 
-  arrange(user_id, start_segment)
-
-# how much observations came from Ethica itself?
-filter(df_final, str_detect(apk, "ethica")) %>% nrow() / nrow(df_final) # 3.39%
-
-
-# save final dataset ------------------------------------------------------
-# 615,075 obs.
-
-# save final dataset as .csv
-if(F) write_csv(df_final, "data/processed/cleaned_logdata.csv")
-
-
-
-
+if(F) write_csv(df_app, "data/processed/df_app.csv")
 

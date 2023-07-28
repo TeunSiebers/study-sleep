@@ -1,0 +1,37 @@
+TITLE:          
+Fragmented, and sticky smartphone use on distraction and task delay;
+Twolevel Fixed Effects Model to Check for Stationarity
+
+DATA:           
+FILE = 'mplus_stationarity.dat';
+
+VARIABLE:       
+NAMES = id survey distract tdelay time fragment sticky day;    
+USEVARIABLES =  day distract tdelay;
+CLUSTER = id; !The Between-Level ID variable; 
+
+ANALYSIS:       
+TYPE = twolevel; !Two-Level Model with paths that are latent variables
+ESTIMATOR = BAYES; !Lagged variables can only be estimated with Bayes in Mplus
+BITERATIONS = (5000); !Run at least 5,000 iterations of the MCMC algorithm
+PROCESSORS = 4; !Use 4 processors to increase the computational speed
+THIN = 2; !Set the thinning factor to 2 to increase stable estimations
+
+MODEL:          
+%within%                   
+    distract ON day;
+    tdelay ON day;
+    distract;
+    tdelay;
+
+%between%                   
+    [distract]; !mean intercept distraction
+    [tdelay]; !mean intercept tdelay
+
+    distract; !intercept variance distraction
+    tdelay; !intercept variance tdelay
+
+    [day];             
+
+OUTPUT:         
+standardized tech8; 
