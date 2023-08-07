@@ -19,7 +19,8 @@ W <- T
 
 # specify files with logdata
 logfiles <- c(list.files("data/processed/main/", full.names = T), 
-              list.files("data/processed/exploratory/", full.names = T))
+              list.files("data/processed/exploratory/", full.names = T),
+              list.files("data/processed/sensitivity/", full.names = T))
 
 for(i in seq_along(logfiles)) {
   # read data ---------------------------------------------------------------
@@ -107,25 +108,26 @@ for(i in seq_along(logfiles)) {
   
   # change pathname into filename
   file <- logfiles[i] %>% 
-    str_extract('(?<=main/|exploratory/).+$') %>% 
+    str_extract('(?<=main/|exploratory/|sensitivity/).+$') %>% 
     str_remove('\\.csv')
   
   # save as .csv file for descriptives
-  if(str_detect(logfiles[i], "_99th$")) write_csv(mplus, glue("data/output/{file}.csv"))
+  if(str_detect(logfiles[i], "_", negate = T)) write_csv(mplus, glue("data/output/{file}.csv"))
   
-  # save as .dat file (create directory per .dat file for Mplus analyses)
-  # if (!dir.exists(glue("mplus/{file}"))){
-  #   dir.create(glue("mplus/{file}"))
-  # }
-  # 
-  # if(W) mplus %>% 
-  #   select(user_id, study_day, daytime_use, prebed_use, postbed_use, sleep_qual) %>% 
-  #   arrange(user_id, study_day) %>% 
-  #   write.table(glue("mplus/{file}/{file}.dat"), 
-  #               sep = "\t",
-  #               dec = ".",
-  #               row.names = FALSE,
-  #               col.names = FALSE)
+  # create directory per .dat file for Mplus analyses
+  if (!dir.exists(glue("mplus/{file}"))){
+    dir.create(glue("mplus/{file}"))
+  }
+  
+  # save as .dat file
+  if(W) mplus %>%
+    select(user_id, study_day, daytime_use, prebed_use, postbed_use, sleep_qual) %>%
+    arrange(user_id, study_day) %>%
+    write.table(glue("mplus/{file}/{file}.dat"),
+                sep = "\t",
+                dec = ".",
+                row.names = FALSE,
+                col.names = FALSE)
 }
 
 

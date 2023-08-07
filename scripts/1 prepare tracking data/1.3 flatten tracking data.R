@@ -13,6 +13,7 @@ library(valr) # for flattening intervals with bed_merge
 # indicate whether or not to write files
 W <- F
 
+
 # read processed tracking data --------------------------------------------
 
 # read data and set column types
@@ -69,44 +70,10 @@ phone <- df_app %>%
 
 if(W) write_csv(phone, "data/processed/main/phone.csv")
 
-# only include observations that lasted shorter than 24 hours
-df_app %>% filter(duration >= 86399) # 46 obs.
-
-phone_24h <- df_app %>% 
-  filter(duration < 86399) %>% 
-  flatten
-
-if(W) write_csv(phone_24h, "data/processed/main/phone_24h.csv")
-
-# only include observations that lasted shorter than 4.8 hours
-# therefore, we will exclude the app activities that lasted longer than the 0.1% 
-# longest app activities in the Video and Gaming category (i.e., longer than 4.8 hours)
-cutoff <- df_app %>% 
-  filter(app_cat %in% c("Video Players & Editors", "Gaming")) %>% 
-  .$duration %>% 
-  quantile(.999) # 17288.55 sec
-
-df_app %>% filter(duration >= cutoff) # 258 obs.
-
-phone_99th <- df_app %>% 
-  filter(duration < cutoff) %>% 
-  flatten
-
-if(W) write_csv(phone_99th, "data/processed/main/phone_99th.csv")
-
-# only include observations that last less than 4.8 hours and are recognized by the Google Playsgtore
-df_app %>% filter(duration >= cutoff | is.na(app_name)) # 121,522 obs.
-
-phone_99th_GP <- df_app %>% 
-  filter(duration < cutoff, !is.na(app_name)) %>% 
-  flatten
-
-if(W) write_csv(phone_99th_GP, "data/processed/main/phone_99th_GP.csv")
-
 
 # exploratory analyses ----------------------------------------------------
 
-# social media ----
+# social media
 social_media <- c("Instagram", "WhatsApp Messenger", "Snapchat", "TikTok", 
                   "Twitter", "Facebook", "Messenger", "Reddit", 
                   "Discord: Talk, Chat & Hang Out")
@@ -117,83 +84,89 @@ social <- df_app %>%
 
 if(W) write_csv(social, "data/processed/exploratory/social.csv")
 
-social_24h <- df_app %>% 
-  filter(app_name %in% social_media, 
-         duration < 86399) %>% 
-    flatten
-
-if(W) write_csv(social_24h, "data/processed/exploratory/social_24h.csv")
-
-social_99th <- df_app %>% 
-  filter(app_name %in% social_media, 
-         duration < cutoff) %>% 
-    flatten
-
-if(W) write_csv(social_99th, "data/processed/exploratory/social_99th.csv")
-
-
-# gaming ----
+# gaming
 game <- df_app %>% 
   filter(app_cat == "Gaming") %>%
   flatten
 
 if(W) write_csv(game, "data/processed/exploratory/game.csv")
 
-game_24h <- df_app %>% 
-  filter(app_cat == "Gaming",
-         duration < 86399) %>% 
-  flatten
+# video players and entertainment
+video_ent <- c("YouTube", "Netflix", "Twitch: Live Game Streaming", 
+               "Disney+", "Videoland", "Ziggo GO", "V LIVE", "HUAWEI Video", 
+               "Pokémon TV", "MTV Play", "Amazon Prime Video", "NPO")
 
-if(W) write_csv(game_24h, "data/processed/exploratory/game_24h.csv")
-
-game_99th <- df_app %>% 
-  filter(app_cat == "Gaming",
-         duration < cutoff) %>% 
-  flatten
-
-if(W) write_csv(game_99th, "data/processed/exploratory/game_99th.csv")
-
-
-# video players ----
-video <- df_app %>% 
-  filter(app_cat == "Video Players & Editors") %>%
+video <- df_app %>%
+  filter(app_name %in% video_ent) %>%
   flatten
 
 if(W) write_csv(video, "data/processed/exploratory/video.csv")
 
-video_24h <- df_app %>% 
-  filter(app_cat == "Video Players & Editors",
-         duration < 86399) %>% 
-  flatten
 
-if(W) write_csv(video_24h, "data/processed/exploratory/video_24h.csv")
+# sensitivity analyses ----------------------------------------------------
 
-video_99th <- df_app %>% 
-  filter(app_cat == "Video Players & Editors",
-         duration < cutoff) %>% 
-  flatten
+# exclude app activities that lasted 24 hours or more
+one_day <- 86399
 
-if(W) write_csv(video_99th, "data/processed/exploratory/video_99th.csv")
+# exclude app activities that lasted longer than the 0.1% longest app 
+# activities in the Video and Gaming category (i.e., longer than 4.8 hours)
+cutoff <- df_app %>% 
+  filter(app_cat == "Gaming" | app_name %in% video_ent) %>% 
+  .$duration %>% 
+  quantile(.999) # 17295.22 sec
+
+# for smartphone use, also exclude app activities that lasted longer than 4.8 
+# hours or those that are not recognized by the Google Playstore
+
+# smartphone (main  analyses)
+if(W) df_app %>% 
+  filter(duration < one_day) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/phone_24h.csv")
+
+if(W) df_app %>% 
+  filter(duration < cutoff) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/phone_99th.csv")
+
+if(W) df_app %>% 
+  filter(duration < cutoff, !is.na(app_name)) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/phone_99th_GP.csv")
 
 
-# music ----
-music <- df_app %>% 
-  filter(app_cat == "Music & Audio") %>%
-  flatten
+# social media  (exploratory) 
+if(W) df_app %>% 
+  filter(app_name %in% social_media, duration < one_day) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/social_24h.csv")
 
-if(W) write_csv(music, "data/processed/exploratory/music.csv")
+if(W) df_app %>% 
+  filter(app_name %in% social_media, duration < cutoff) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/social_99th.csv")
 
-music_24h <- df_app %>% 
-  filter(app_cat == "Music & Audio",
-         duration < 86399) %>% 
-  flatten
 
-if(W) write_csv(music_24h, "data/processed/exploratory/music_24h.csv")
+# gaming  (exploratory)
+if(W) df_app %>% 
+  filter(app_cat == "Gaming", duration < one_day) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/game_24h.csv")
 
-music_99th <- df_app %>% 
-  filter(app_cat == "Music & Audio",
-         duration < cutoff) %>% 
-  flatten
+if(W) df_app %>% 
+  filter(app_cat == "Gaming", duration < cutoff) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/game_99th.csv")
 
-if(W) write_csv(music_99th, "data/processed/exploratory/music_99th.csv")
+
+# video players (exploratory)
+if(W) df_app %>% 
+  filter(app_name %in% video_ent, duration < one_day) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/video_24h.csv")
+
+if(W) df_app %>% 
+  filter(app_cat == "Video Players & Editors", duration < cutoff) %>% 
+  flatten %>% 
+  write_csv("data/processed/sensitivity/video_99th.csv")
 

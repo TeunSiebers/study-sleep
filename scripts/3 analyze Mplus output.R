@@ -163,42 +163,24 @@ tidy_mplus <- function(path) {
 # apply function to Mplus output ------------------------------------------
 
 # run function on all models for main analyses
-out_main <- map_df(list.files(path = "mplus/main/", 
+out_main <- map_df(list.files(path = "mplus/phone/", 
                                  pattern = "model_[123].out", 
                                  full.names = T), 
                       ~tidy_mplus(.)) %>% mutate(analysis = "main")
-
-# run function on all models for sensitivity analyses
-out_sens_24h <- map_df(list.files(path = "mplus/sens_24h/", 
-                                 pattern = "model_[123].out", 
-                                 full.names = T), 
-                      ~tidy_mplus(.)) %>% mutate(analysis = "sens_24h")
-
-# run function on all models for sensitivity analyses
-out_sens_99th <- map_df(list.files(path = "mplus/sens_99th//", 
-                                 pattern = "model_[123].out", 
-                                 full.names = T), 
-                      ~tidy_mplus(.)) %>% mutate(analysis = "sens_99th")
-
-# run function on all models for sensitivity analyses
-out_sens_99th_GP <- map_df(list.files(path = "mplus/sens_99th_GP//", 
-                                 pattern = "model_[123].out", 
-                                 full.names = T), 
-                      ~tidy_mplus(.)) %>%  mutate(analysis = "sens_99th_GP")
  
-combined <- bind_rows(out_main, out_sens_24h, out_sens_99th, out_sens_99th_GP) %>% 
+combined <- out_main %>% 
   filter(str_detect(effect, "[Vv]ariances|[Pp]hi|effe", negate = T)) %>% 
   arrange(desc(BW)) %>% 
   relocate(effect, analysis, random_fixed, BW) %>% 
   mutate_all(as.character) %>% 
   replace(is.na(.), "") %>% 
+  mutate(effect = case_when(str_detect(effect, "Day") ~ paste0("1", effect),
+                            str_detect(effect, "Pre") ~ paste0("2", effect),
+                            str_detect(effect, "Post") ~ paste0("3", effect))) %>% 
   arrange(random_fixed, desc(BW), effect) %>% 
-  mutate(effect = str_replace(effect, "on", "\u2192"),
-         effect = str_replace(effect, "with", "\u2194"))
-
-
-# create table ------------------------------------------------------------
-
+  mutate(effect = str_remove(effect, "^[0-9]") %>% 
+           str_replace("on", "\u2192") %>% 
+           str_replace("with", "\u2194"))
 
 # create indices for fixed/random and within/between
 n_within_fixed_sens <- nrow(filter(combined, random_fixed == "fixed", BW == "Within"))
@@ -210,17 +192,209 @@ combined <- combined %>%
   select(-random_fixed, -BW)
 
 # format table
-models_table_sens <- combined %>% 
-  kable(caption = "Table. Model Parameters of the Fixed Effects Models for Sensitivity Analyses", 
+models_table <- combined %>% 
+  kable(caption = "Table ...", 
         align = "lllcc",
         escape = F) %>%
   kable_classic(full_width = F, html_font = "") %>% 
   pack_rows(index = c("Within-person" = n_within_fixed_sens, 
                       "Between-person" = n_between_fixed_sens)) %>% 
   footnote(general_title = "Note.",
-           general = "bs are unstandardized effects. βs are standardized effects using STDY for the categorical and STDYX for the continuous variables. p-values represent one-tailed Bayesian p-values (McNeish & Hamaker, 2020).",
+           general = "bs are unstandardized effects. βs are standardized effects using STDY for the categorical and STDYX for the continuous variables.",
            symbol = c("p < .05.", "p < .01.", "p < .001."),
            symbol_manual = c("$^{*}$", "$^{**}$", "$^{***}$"),
            footnote_as_chunk = TRUE)
 
+models_table
+
+# exploratory analyses ----------------------------------------------------
+
+out_game <- map_df(list.files(path = "mplus/game/", 
+                              pattern = "model_[123].out", 
+                              full.names = T), 
+                   ~tidy_mplus(.)) %>% mutate(analysis = "game")
+
+out_social <- map_df(list.files(path = "mplus/social/", 
+                                pattern = "model_[123].out", 
+                                full.names = T), 
+                     ~tidy_mplus(.)) %>% mutate(analysis = "social")
+
+out_video <- map_df(list.files(path = "mplus/video/", 
+                               pattern = "model_[123].out", 
+                               full.names = T), 
+                    ~tidy_mplus(.)) %>%  mutate(analysis = "video")
+
+
+combined_expl <- bind_rows(out_game, out_social, out_video) %>% 
+  filter(str_detect(effect, "[Vv]ariances|[Pp]hi|effe", negate = T)) %>% 
+  arrange(desc(BW)) %>% 
+  relocate(effect, analysis, random_fixed, BW) %>% 
+  mutate_all(as.character) %>% 
+  replace(is.na(.), "") %>% 
+  mutate(effect = case_when(str_detect(effect, "Day") ~ paste0("1", effect),
+                            str_detect(effect, "Pre") ~ paste0("2", effect),
+                            str_detect(effect, "Post") ~ paste0("3", effect))) %>% 
+  arrange(random_fixed, desc(BW), effect) %>% 
+  mutate(effect = str_remove(effect, "^[0-9]") %>% 
+           str_replace("on", "\u2192") %>% 
+           str_replace("with", "\u2194"))
+
+# create indices for fixed/random and within/between
+n_within_fixed_sens <- nrow(filter(combined_expl, random_fixed == "fixed", BW == "Within"))
+n_between_fixed_sens <- nrow(filter(combined_expl, random_fixed == "fixed", BW == "Between"))
+
+# deselect variables that indicate random/fixed and between/within
+combined_expl <- combined_expl %>% 
+  rename(" " = effect) %>% 
+  select(-random_fixed, -BW)
+
+# format table
+models_table_expl <- combined_expl %>% 
+  kable(caption = "Table ...", 
+        align = "lllcc",
+        escape = F) %>%
+  kable_classic(full_width = F, html_font = "") %>% 
+  pack_rows(index = c("Within-person" = n_within_fixed_sens, 
+                      "Between-person" = n_between_fixed_sens)) %>% 
+  footnote(general_title = "Note.",
+           general = "bs are unstandardized effects. βs are standardized effects using STDY for the categorical and STDYX for the continuous variables.",
+           symbol = c("p < .05.", "p < .01.", "p < .001."),
+           symbol_manual = c("$^{*}$", "$^{**}$", "$^{***}$"),
+           footnote_as_chunk = TRUE)
+
+models_table_expl
+
+
+# sensitivity analyses ----------------------------------------------------
+
+# run function on all models for sensitivity analyses
+
+# smartphone
+out_phone_24h <- map_df(list.files(path = "mplus/phone_24h/", 
+                                  pattern = "model_[123].out", 
+                                  full.names = T), 
+                       ~tidy_mplus(.)) %>% mutate(analysis = "phone_24h")
+out_phone_99th <- map_df(list.files(path = "mplus/phone_99th/", 
+                                   pattern = "model_[123].out", 
+                                   full.names = T), 
+                        ~tidy_mplus(.)) %>% mutate(analysis = "phone_99th")
+out_phone_99th_GP <- map_df(list.files(path = "mplus/phone_99th_GP/", 
+                                      pattern = "model_[123].out", 
+                                      full.names = T), 
+                           ~tidy_mplus(.)) %>%  mutate(analysis = "phone_99th_GP")
+
+
+phone_sens <- bind_rows(out_phone_24h, out_phone_99th, out_phone_99th_GP) %>% 
+  filter(str_detect(effect, "[Vv]ariances|[Pp]hi|effe", negate = T)) %>% 
+  arrange(desc(BW)) %>% 
+  relocate(effect, analysis, random_fixed, BW) %>% 
+  mutate_all(as.character) %>% 
+  replace(is.na(.), "") %>% 
+  mutate(effect = case_when(str_detect(effect, "Day") ~ paste0("1", effect),
+                            str_detect(effect, "Pre") ~ paste0("2", effect),
+                            str_detect(effect, "Post") ~ paste0("3", effect))) %>% 
+  arrange(random_fixed, desc(BW), effect) %>% 
+  mutate(effect = str_remove(effect, "^[0-9]") %>% 
+           str_replace("on", "\u2192") %>% 
+           str_replace("with", "\u2194"))
+
+# create indices for fixed/random and within/between
+n_within_fixed_sens <- nrow(filter(phone_sens, random_fixed == "fixed", BW == "Within"))
+n_between_fixed_sens <- nrow(filter(phone_sens, random_fixed == "fixed", BW == "Between"))
+
+# deselect variables that indicate random/fixed and between/within
+phone_sens <- phone_sens %>% 
+  rename(" " = effect) %>% 
+  select(-random_fixed, -BW)
+
+# format table
+models_table_phone_sens <- phone_sens %>% 
+  kable(caption = "Table ...", 
+        align = "lllcc",
+        escape = F) %>%
+  kable_classic(full_width = F, html_font = "") %>% 
+  pack_rows(index = c("Within-person" = n_within_fixed_sens, 
+                      "Between-person" = n_between_fixed_sens)) %>% 
+  footnote(general_title = "Note.",
+           general = "bs are unstandardized effects. βs are standardized effects using STDY for the categorical and STDYX for the continuous variables.",
+           symbol = c("p < .05.", "p < .01.", "p < .001."),
+           symbol_manual = c("$^{*}$", "$^{**}$", "$^{***}$"),
+           footnote_as_chunk = TRUE)
+
+models_table_phone_sens
+
+
+# sensitivity analysis per app category -----------------------------------
+
+# gaming
+out_game_24h <- map_df(list.files(path = "mplus/game_24h/", 
+                                  pattern = "model_[123].out", 
+                                  full.names = T), 
+                       ~tidy_mplus(.)) %>% mutate(analysis = "game_24h")
+out_game_99th <- map_df(list.files(path = "mplus/game_99th/", 
+                                   pattern = "model_[123].out", 
+                                   full.names = T), 
+                        ~tidy_mplus(.)) %>% mutate(analysis = "game_99th")
+
+# social
+out_social_24h <- map_df(list.files(path = "mplus/social_24h/", 
+                                    pattern = "model_[123].out", 
+                                    full.names = T), 
+                         ~tidy_mplus(.)) %>% mutate(analysis = "social_24h")
+out_social_99th <- map_df(list.files(path = "mplus/social_99th/", 
+                                     pattern = "model_[123].out", 
+                                     full.names = T), 
+                          ~tidy_mplus(.)) %>% mutate(analysis = "social_99th")
+
+# video
+out_video_24h <- map_df(list.files(path = "mplus/video_24h/", 
+                                   pattern = "model_[123].out", 
+                                   full.names = T), 
+                        ~tidy_mplus(.)) %>%  mutate(analysis = "video_24h")
+out_video_99th <- map_df(list.files(path = "mplus/video_99th/", 
+                                    pattern = "model_[123].out", 
+                                    full.names = T), 
+                         ~tidy_mplus(.)) %>%  mutate(analysis = "video_99th")
+
+
+
+appcat_sens <- bind_rows(out_game_24h, out_game_99th,
+                           out_social_24h, out_social_99th,
+                           out_video_24h, out_video_99th) %>% 
+  filter(str_detect(effect, "[Vv]ariances|[Pp]hi|effe", negate = T)) %>% 
+  arrange(desc(BW)) %>% 
+  relocate(effect, analysis, random_fixed, BW) %>% 
+  mutate_all(as.character) %>% 
+  replace(is.na(.), "") %>% 
+  mutate(effect = case_when(str_detect(effect, "Day") ~ paste0("1", effect),
+                            str_detect(effect, "Pre") ~ paste0("2", effect),
+                            str_detect(effect, "Post") ~ paste0("3", effect))) %>% 
+  arrange(random_fixed, desc(BW), effect) %>% 
+  mutate(effect = str_remove(effect, "^[0-9]") %>% 
+           str_replace("on", "\u2192") %>% 
+           str_replace("with", "\u2194"))
+
+# create indices for fixed/random and within/between
+n_within_fixed_sens <- nrow(filter(appcat_sens, random_fixed == "fixed", BW == "Within"))
+n_between_fixed_sens <- nrow(filter(appcat_sens, random_fixed == "fixed", BW == "Between"))
+
+# deselect variables that indicate random/fixed and between/within
+appcat_sens <- appcat_sens %>% 
+  rename(" " = effect) %>% 
+  select(-random_fixed, -BW)
+
+# format table
+models_table_appcat_sens <- appcat_sens %>% 
+  kable(caption = "Table ...", 
+        align = "lllcc",
+        escape = F) %>%
+  kable_classic(full_width = F, html_font = "") %>% 
+  pack_rows(index = c("Within-person" = n_within_fixed_sens, 
+                      "Between-person" = n_between_fixed_sens)) %>% 
+  footnote(general_title = "Note.",
+           general = "bs are unstandardized effects. βs are standardized effects using STDY for the categorical and STDYX for the continuous variables.",
+           symbol = c("p < .05.", "p < .01.", "p < .001."),
+           symbol_manual = c("$^{*}$", "$^{**}$", "$^{***}$"),
+           footnote_as_chunk = TRUE)
+  
 models_table_sens
