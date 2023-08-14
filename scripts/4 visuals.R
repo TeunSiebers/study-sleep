@@ -9,7 +9,8 @@
 # load packages
 library(tidyverse)
 library(hrbrthemes)
-
+library(ggridges)
+library(scales)
 
 
 # read data ---------------------------------------------------------------

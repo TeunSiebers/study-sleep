@@ -17,9 +17,6 @@ library(glue)
 library(data.table)
 library(knitr) # for formatting table
 library(kableExtra) # for formatting table
-library(hrbrthemes)
-library(ggridges)
-library(scales)
 
 
 # create function to rename user_id,
