@@ -18,6 +18,9 @@ library(data.table)
 library(knitr) # for formatting table
 library(kableExtra) # for formatting table
 library(hrbrthemes)
+library(ggridges)
+library(scales)
+
 
 # create function to rename user_id,
 flatten <- function(...) {
@@ -67,7 +70,7 @@ timeframes %>%
 
 # daily smartphone use ----------------------------------------------------
 
-# create function to split app activities per hour
+# create function to split app activities per day
 generate_daily_time <- function(x, y) {
   if(as_date(x) == as_date(y)){
     tibble(start_d = x, end_d = y)
@@ -78,7 +81,7 @@ generate_daily_time <- function(x, y) {
   }
 }
 
-# split smartphone use at every hour of the day
+# split smartphone use at every day
 day_split <- df %>% 
   flatten %>% 
   mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
@@ -102,6 +105,39 @@ ggplot(data = daily_time) +
   scale_x_continuous(breaks = seq(0, 24, 2), 
                      name = "time spent on smartphone on one day (in hours)") + 
   theme_ipsum()
+
+
+# daily use of app categories --------------------------------------------
+
+# split smartphone use at every day
+day_split_social <- df %>% 
+  filter(app_name %in% social_media) %>% 
+  flatten %>% 
+  mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
+  tidyr::unnest(time) %>%
+  mutate(duration = as.numeric(end_d - start_d)) %>%
+  select(-start, -end) %>% 
+  mutate(app_type = "social media")
+
+# split smartphone use at every day
+day_split_game <- df %>% 
+  filter(app_cat == "Gaming") %>% 
+  flatten %>% 
+  mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
+  tidyr::unnest(time) %>%
+  mutate(duration = as.numeric(end_d - start_d)) %>%
+  select(-start, -end)  %>% 
+  mutate(app_type = "game")
+
+# split smartphone use at every day
+day_split_video <- df %>% 
+  filter(app_name %in% video_ent) %>% 
+  flatten %>% 
+  mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
+  tidyr::unnest(time) %>%
+  mutate(duration = as.numeric(end_d - start_d)) %>%
+  select(-start, -end) %>% 
+  mutate(app_type = "video player")
 
 
 # hourly smartphone use ---------------------------------------------------
@@ -213,23 +249,20 @@ appcat_per_hour %>%
 
 # descriptives per category -----------------------------------------------
 
-# phone
-phone <- read_csv("data/output/phone.csv") %>% 
-  mutate_all(~ifelse(. == -999, NA, .)) %>% mutate(cat = "1. smartphone") %>% na.omit()
+timeframe_per_cat <- map_df(
+  list.files("data/output/", full.names = T, pattern = ".csv"),
+  function(x) {
+    read_csv(x) %>% 
+      mutate_all(~ifelse(. == -999, NA, .)) %>%
+      mutate(cat = str_remove_all(x, "data/output/|\\.csv")) %>% 
+      na.omit()
+    }) 
 
-# social 
-social <- read_csv("data/output/social.csv") %>% 
-  mutate_all(~ifelse(. == -999, NA, .)) %>% mutate(cat = "2. social") %>% na.omit()
-
-# game 
-game <- read_csv("data/output/game.csv") %>% 
-  mutate_all(~ifelse(. == -999, NA, .)) %>% mutate(cat = "3. game") %>% na.omit()
-
-# video 
-video <- read_csv("data/output/video.csv") %>% 
-  mutate_all(~ifelse(. == -999, NA, .)) %>% mutate(cat = "4. video") %>% na.omit()
-
-bind_rows(phone, social, game, video) %>% 
+timeframe_per_cat %>% 
+  mutate(cat = case_when(cat == "phone" ~ "1. smartphone",
+                         cat == "social" ~ "2. social media app",
+                         cat == "game" ~ "3. game app",
+                         cat == "video" ~ "4. video player app")) %>% 
   group_by(cat) %>% 
   summarise_at(.vars = c("daytime_use", "prebed_use", "postbed_use"), 
                .funs = list(m = ~seconds_to_period(mean(.)*3600), 

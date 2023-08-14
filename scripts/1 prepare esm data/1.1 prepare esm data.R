@@ -48,7 +48,7 @@ esm2_select <- esm2_raw %>%
 # N = 312; 39,312 obs.
 
 # get a list of participants whose smartphone use was tracked (N = 160)
-participants <- unique(read_csv("data/processed/cleaned_logdata.csv")$user_id)
+participants <- unique(read.table("data/processed/user_ids.txt")$x)
 
 # only keep participants whose smartphone activities were tracked
 esm2_filter1 <- esm2_select %>% 
@@ -164,6 +164,11 @@ esm2_df <- esm2_cat %>%
     sleep_duration = difftime(wt_today, bt_yes, units = "hours")
   )
 
+untrustworthy <- nrow(false) + nrow(esm2_cat %>% filter(correct_bedtime == "incorrect" | correct_waketime == "incorrect"))
+untrustworthy / nrow(esm2)
+
+confused <- esm2_cat %>% filter(correct_bedtime == "12-24h clock confused") %>% nrow()
+confused / nrow(esm2)
 
 # visualize data ----------------------------------------------------------
 
