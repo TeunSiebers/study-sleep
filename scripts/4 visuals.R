@@ -11,6 +11,7 @@ library(tidyverse)
 library(hrbrthemes)
 library(ggridges)
 library(scales)
+library(ggh4x)
 
 
 # read data ---------------------------------------------------------------
@@ -127,28 +128,36 @@ sample_days <- as.interval(start_int, start_int + period)
 figure_2 <- ggplot() +
   geom_rect(data = timeframe %>%
               filter(user_id %in% sample_user,
-                     bt_yes %within% sample_days),
+                     bt_yes %within% sample_days) %>% 
+              arrange(user_id) %>% 
+              mutate(idx = match(user_id, unique(user_id))),
             mapping = aes(xmin = bt_yes-hours(1), xmax = bt_yes, ymin = -Inf, ymax = Inf),
             alpha = .1) +
   geom_rect(data = timeframe %>%
               filter(user_id %in% sample_user,
-                     bt_yes %within% sample_days),
+                     bt_yes %within% sample_days) %>% 
+              arrange(user_id) %>% 
+              mutate(idx = match(user_id, unique(user_id))),
             mapping = aes(xmin = bt_yes, xmax = wt_today, ymin = -Inf, ymax = Inf),
             alpha = .3) +
   geom_vline(xintercept = as_datetime("2020-06-5 00:00:00")) +
   geom_linerange(data = df %>%
                    filter(user_id %in% sample_user,
                           start %within% sample_days,
-                          cat == "other"),
+                          cat == "other") %>% 
+                   arrange(user_id) %>% 
+                   mutate(idx = match(user_id, unique(user_id))),
                  mapping = aes(xmin = start, xmax = end,
-                               y = as.factor(user_id), color = cat),
+                               y = as.factor(idx), color = cat),
                  size = 5) +
   geom_linerange(data = df %>%
                    filter(user_id %in% sample_user,
                           start %within% sample_days,
-                          cat %in% c("social", "game", "video")),
+                          cat %in% c("social", "game", "video")) %>% 
+                   arrange(user_id) %>% 
+                   mutate(idx = match(user_id, unique(user_id))),
                  mapping = aes(xmin = start, xmax = end,
-                               y = as.factor(user_id), color = cat),
+                               y = as.factor(idx), color = cat),
                  size = 5) +
   labs(y = "Participant", color = "App category:") + 
   scale_x_datetime(name = "Time",
@@ -167,7 +176,7 @@ figure_2 <- ggplot() +
                                 video = "#00AFBB",
                                 other = "grey39")) +
   scale_y_discrete(limits=rev) +
-  facet_wrap(~as.factor(user_id), ncol = 1, scales = "free_y") + 
+  facet_wrap(~as.factor(idx), ncol = 1, scales = "free_y") + 
   theme_minimal() +
   theme(strip.text.x = element_blank(),
         panel.spacing = unit(0.0,'lines'),

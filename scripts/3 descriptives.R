@@ -29,6 +29,9 @@ flatten <- function(...) {
     rename(user_id = chrom)
 }
 
+# define participants
+participants <- read.table("data/processed/user_ids.txt")$x
+
 # define categories
 social_media <- c("Instagram", "WhatsApp Messenger", "Snapchat", "TikTok", 
                   "Twitter", "Facebook", "Messenger", "Reddit", 
@@ -45,25 +48,42 @@ df <- read_csv("data/processed/df_app.csv") %>%
   mutate_at(vars(user_id, apk, app_name, app_cat), as.factor) %>% 
   mutate_at(vars(start, end), as_datetime) %>% 
   mutate(duration = as.numeric(duration)) %>% 
-  arrange(user_id, start) # 758,646 obs.; N = 155
+  arrange(user_id, start) %>% 
+  filter(user_id %in% participants) # 745,947 obs.; N = 155
 
+
+df %>% 
+  filter(app_name %in% social_media) %>%
+  pull(user_id) %>%
+  unique() %>% length()
+
+df %>% 
+  filter(app_cat == "Gaming") %>%
+  pull(user_id) %>%
+  unique() %>% length()
+
+df %>% 
+  filter(app_name %in% video_ent) %>%
+  pull(user_id) %>%
+  unique() %>% length()
 
 
 # timeframe data ----------------------------------------------------------
-
 
 # read timeframes
 timeframes <- read_csv("data/processed/timeframes.csv") %>% 
   select(user_id, weekday, bt_yes, wt_today) %>% 
   mutate(bt_yes = hour(bt_yes) + (minute(bt_yes)/60),
          wt_today = hour(wt_today) + (minute(wt_today)/60),
-         weekend = ifelse(weekday %in% c("za", "zo"), "weekend day", "weekday"))
+         weekend = ifelse(weekday %in% c("za", "zo"), "weekend day", "weekday")) %>% 
+  filter(user_id %in% participants) # 155 obs.; N = 155
 
 timeframes %>% 
   mutate(bt_yes = ifelse(bt_yes < 15, bt_yes + 24, bt_yes)) %>% 
   group_by(weekend) %>% 
   summarise_at(vars(bt_yes, wt_today), list(M = mean, SD = sd)) %>% 
   mutate_at(-1, ~seconds_to_period(. * 3600))
+
 
 # daily smartphone use ----------------------------------------------------
 

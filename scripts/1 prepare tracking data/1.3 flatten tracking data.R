@@ -25,7 +25,8 @@ df_app <- read_csv("data/processed/df_app.csv") %>%
 
 
 # visualize flattening ----------------------------------------------------
-# There is much overlap in the intervals of the app activities
+
+# There is overlap in the intervals of the app activities
 # To avoid that multiple app activities occur at the same time, we flatten all
 # app activities into general smartphone use activities.
 # 758,558 obs.; N = 155
