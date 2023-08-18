@@ -87,7 +87,7 @@ prep_figures <- timeframe_per_cat %>%
 figure_1 <- prep_figures %>% 
   filter(cat == "Smartphone") %>% 
   ggplot() +
-  geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(stat(quantile))),
+  geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
   scale_fill_manual(labels = c("0-25th", "25-50th", "50-75th", "75-100th"),
@@ -95,7 +95,7 @@ figure_1 <- prep_figures %>%
   scale_x_continuous(name = "Average time spent on smartphone",
                      breaks = pretty_breaks(8), limits = c(0, NA)) + 
   scale_y_discrete(name = NULL, limits=rev,expand = c(0, 0)) +
-  labs(fill = "Percentile of N:") + 
+  labs(fill = "Percentile of N") + 
   theme_minimal() +
   theme(panel.spacing = unit(0.5,'lines'),
         legend.position = c(.99, .85), 
@@ -123,7 +123,7 @@ figure_2 <- prep_figures %>%
   filter(cat != "Smartphone", 
          !(timeframe == "Post-bedtime use (in hours)" & duration > 3)) %>% 
   ggplot() +
-  geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(stat(quantile))),
+  geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
   scale_fill_manual(labels = c("0-25th", "25-50th", "50-75th", "75-100th"),
@@ -131,7 +131,7 @@ figure_2 <- prep_figures %>%
   scale_x_continuous(name = "Average time spent on app",
                      breaks = pretty_breaks(8), limits = c(0, NA)) + 
   scale_y_discrete(name = NULL, limits=rev,expand = c(0, 0)) +
-  labs(fill = "Percentile of N:") + 
+  labs(fill = "Percentile of N") + 
   theme_minimal() +
   theme(panel.spacing = unit(0.5,'lines'),
         legend.position = c(.99, .85), 
