@@ -79,42 +79,156 @@ prep_figures <- timeframe_per_cat %>%
                                timeframe == "daytime_use" ~ "Daytime use (in hours)",
                                timeframe == "prebed_use" ~ "Pre-bedtime use (in minutes)",
                                timeframe == "postbed_use" ~ "Post-bedtime use (in hours)"),
-         duration = ifelse(timeframe == "Pre-bedtime use (in minutes)", duration * 60, duration))
+         duration = ifelse(timeframe %in% c("Pre-bedtime use (in minutes)", "Post-bedtime use (in hours)"), duration * 60, duration))
 
 
 # create smartphone density plot ---------------------------------------
 
+# calculate quartiles
+daily_q <- prep_figures %>% 
+  filter(cat == "Smartphone", timeframe == "Daily use (in hours)") %>% 
+  pull(duration) %>% 
+  summary() %>% 
+  round(1)
+
+# show quartiles 
+daily_q
+
+# create plot
 figure_1 <- prep_figures %>% 
-  filter(cat == "Smartphone") %>% 
+  filter(cat == "Smartphone", timeframe == "Daily use (in hours)") %>% 
   ggplot() +
   geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
-  scale_fill_manual(labels = c("0-25th", "25-50th", "50-75th", "75-100th"),
+  scale_fill_manual(labels = c("Q1: 1.2 - 4.8 hr", "Q2: 4.8 - 6.3 hr", "Q3: 6.3 - 7.8 hr", "Q4: 7.8 - 15.7 hr"),
                     values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
-  scale_x_continuous(name = "Average time spent on smartphone",
+  scale_x_continuous(name = "Average time spent on smartphone per day (in hours)",
                      breaks = pretty_breaks(8), limits = c(0, NA)) + 
   scale_y_discrete(name = NULL, limits=rev,expand = c(0, 0)) +
-  labs(fill = "Percentile of N") + 
+  labs(fill = "Quartiles") + 
   theme_minimal() +
   theme(panel.spacing = unit(0.5,'lines'),
-        legend.position = c(.99, .85), 
-        legend.justification = "right", 
+        legend.position = c(.80, .65), 
+        legend.justification = "left", 
         legend.direction = "vertical", 
         legend.background = element_rect(fill = "white", color = NA), 
         panel.grid.minor.y = element_blank(),
-        axis.text.y = element_blank())
+        axis.text.y = element_blank(),
+        plot.margin = grid::unit(c(1,1,1,1), "mm"))
 
-design_1 <- matrix(c(1, 1, 2, 1, 1, 4, 1, 1, 3), 3, 3)
-
-figure_1 <- figure_1 + 
-  facet_manual(vars(factor(timeframe)), design = design_1, scales = "free") +
-  theme(plot.margin = grid::unit(c(1,1,1,1), "mm"))
-
+# show plot
 figure_1
 
+# save plot
+if(W) ggsave(plot = figure_1, "data/output/figures/Figure 1 - daily.svg", width = 18, height = 5, units = "cm")
+
+
+# create smartphone density plot: daytime  ---------------------------------
+
+daytime_q <- prep_figures %>% 
+  filter(cat == "Smartphone", timeframe == "Daytime use (in hours)") %>% 
+  pull(duration) %>% 
+  summary() %>% 
+  round(1)
+
+figure_2a <- prep_figures %>% 
+  filter(cat == "Smartphone", timeframe == "Daytime use (in hours)") %>% 
+  ggplot() +
+  geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
+                               quantiles = c(.25, .5, .75), quantile_lines = F,
+                               calc_ecdf = TRUE, scale = .95) +
+  scale_fill_manual(labels = c("Q1: 1.2 - 4.3 hr", "Q2: 4.3 - 5.2 hr", "Q3: 5.2 - 6.7 hr", "Q4: 6.7 - 13.2 hr"),
+                    values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
+  scale_x_continuous(name = "Average time spent on smartphone per day (in hours)",
+                     breaks = pretty_breaks(8), limits = c(0, NA)) + 
+  scale_y_discrete(name = NULL, limits=rev,expand = c(0, 0)) +
+  labs(fill = "Quartiles") + 
+  theme_minimal() +
+  theme(panel.spacing = unit(0.5,'lines'),
+        legend.position = c(.80, .65), 
+        legend.justification = "left", 
+        legend.direction = "vertical", 
+        legend.background = element_rect(fill = "white", color = NA), 
+        panel.grid.minor.y = element_blank(),
+        axis.text.y = element_blank(),
+        plot.margin = grid::unit(c(1,1,1,1), "mm"))
+
+figure_2a
+
   # save plot
-if(F) ggsave(plot = figure_1, "data/output/figures/Figure 1 - smartphone density.svg", width = 22, height = 11, units = "cm")
+if(W) ggsave(plot = figure_2a, "data/output/figures/Figure 2a - daytime.svg", width = 18, height = 5, units = "cm")
+
+
+# create smartphone density plot: pre-bedtime --------------------------
+
+prebed_q <- prep_figures %>% 
+  filter(cat == "Smartphone", timeframe == "Pre-bedtime use (in minutes)") %>% 
+  pull(duration) %>% 
+  summary() %>% 
+  round()
+
+figure_2b <- prep_figures %>% 
+  filter(cat == "Smartphone", timeframe == "Pre-bedtime use (in minutes)") %>% 
+  ggplot() +
+  geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
+                               quantiles = c(.25, .5, .75), quantile_lines = F,
+                               calc_ecdf = TRUE, scale = .95) +
+  scale_fill_manual(labels = c("Q1: 1 - 16 min", "Q2: 16 - 24 min", "Q3: 24 - 33 min", "Q4: 33 - 53 min"),
+                    values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
+  scale_x_continuous(name = "Average time spent on smartphone per day (in minutes)",
+                     breaks = pretty_breaks(8), limits = c(0, 60)) + 
+  scale_y_discrete(name = NULL, limits=rev,expand = c(0, 0)) +
+  labs(fill = "Quartiles") + 
+  theme_minimal() +
+  theme(panel.spacing = unit(0.5,'lines'),
+        legend.position = c(.80, .65), 
+        legend.justification = "left", 
+        legend.direction = "vertical", 
+        legend.background = element_rect(fill = "white", color = NA), 
+        panel.grid.minor.y = element_blank(),
+        axis.text.y = element_blank(),
+        plot.margin = grid::unit(c(1,1,1,1), "mm"))
+
+figure_2b
+
+# save plot
+if(W) ggsave(plot = figure_2b, "data/output/figures/Figure 2b - pre-bed.svg", width = 18, height = 5, units = "cm")
+
+
+# create smartphone density plot: post-bedtime --------------------------
+
+postbed_q <- prep_figures %>% 
+  filter(cat == "Smartphone", timeframe == "Post-bedtime use (in hours)") %>% 
+  pull(duration) %>% 
+  summary()
+
+figure_2c <- prep_figures %>% 
+  filter(cat == "Smartphone", timeframe == "Post-bedtime use (in hours)") %>% 
+  ggplot() +
+  geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
+                               quantiles = c(.25, .5, .75), quantile_lines = F,
+                               calc_ecdf = TRUE, scale = .95) +
+  scale_fill_manual(labels = c("Q1: 0 - 6 min", "Q2: 6 - 22 min", "Q3: 22 - 55 min", "Q4: 55 - 284 min"),
+                    values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
+  scale_x_continuous(name = "Average time spent on smartphone per day (in minutes)",
+                     breaks = seq(0, 360, 30), limits = c(0, NA)) + 
+  scale_y_discrete(name = NULL, limits=rev,expand = c(0, 0)) +
+  labs(fill = "Quartiles") + 
+  theme_minimal() +
+  theme(panel.spacing = unit(0.5,'lines'),
+        legend.position = c(.80, .65), 
+        legend.justification = "left",  
+        legend.direction = "vertical", 
+        legend.background = element_rect(fill = "white", color = NA), 
+        panel.grid.minor.y = element_blank(),
+        axis.text.y = element_blank(),
+        plot.margin = grid::unit(c(1,1,1,1), "mm"))
+
+figure_2c
+
+# save plot
+if(W) ggsave(plot = figure_2c, "data/output/figures/Figure 2c - post-bedtime.svg", width = 18, height = 5, units = "cm")
 
 
 # create app density plot ----------------------------------------------
@@ -126,12 +240,12 @@ figure_2 <- prep_figures %>%
   geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
-  scale_fill_manual(labels = c("0-25th", "25-50th", "50-75th", "75-100th"),
+  scale_fill_manual(labels = c("1st", "2nd", "3th", "4th"),
                     values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
   scale_x_continuous(name = "Average time spent on app",
                      breaks = pretty_breaks(8), limits = c(0, NA)) + 
   scale_y_discrete(name = NULL, limits=rev,expand = c(0, 0)) +
-  labs(fill = "Percentile of N") + 
+  labs(fill = "Quartile of N") + 
   theme_minimal() +
   theme(panel.spacing = unit(0.5,'lines'),
         legend.position = c(.99, .85), 
@@ -149,7 +263,7 @@ figure_2 <- figure_2 +
 figure_2
 
 # save plot
-if(F) ggsave(plot = figure_2, "data/output/figures/Figure 2 - app density.svg", width = 22, height = 15, units = "cm")
+if(W) ggsave(plot = figure_2, "data/output/figures/Figure 2 - app density.svg", width = 22, height = 15, units = "cm")
 
 
 # create app usage plot ---------------------------------------------------
@@ -214,11 +328,11 @@ figure <- ggplot() +
         panel.grid.minor.y = element_blank())
 
 # strip whitespace
-figure <- figure_2 + theme(plot.margin = grid::unit(c(0,6,1,1), "mm"))
+figure <- figure + theme(plot.margin = grid::unit(c(0,6,1,1), "mm"))
 figure
 
 # save plot
-if(F) ggsave(plot = figure, "data/output/figures/Figure - app use.svg", width = 22, height = 11, units = "cm")
+if(W) ggsave(plot = figure, "data/output/figures/Figure - app use.svg", width = 22, height = 11, units = "cm")
 
 
 # create co-fluctuation plot ----------------------------------------------
