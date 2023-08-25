@@ -1,7 +1,15 @@
+# exclude irrelevant infomration
 .Rproj.user
 .Rhistory
 .RData
 .Ruserdata
+
+# exclude the directories "data" and "_overig"
 data/
 _overig/
+
+# exclude logfile created while running Mplus files
 Mplus Run Models.log
+
+# exclude all .dat files (Mplus data)
+*.dat
