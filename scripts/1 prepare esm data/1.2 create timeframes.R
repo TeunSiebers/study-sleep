@@ -70,14 +70,23 @@ wt_estimates_yes <- wt_estimates %>%
 
 # merge the dataset with averages with sleep dataframe
 # fill missing values of yesterdays wake-up time
-full_sleep_df <- sleep_df %>% 
+wts <- sleep_df %>% 
   left_join(wt_estimates_yes) %>% 
   left_join(wt_estimates) %>% 
   # create new datetime estimates for every row
   mutate(wt_yes_est = paste(as.character(date_res - days(1)), " ", wt_yes_est) %>% 
            as_datetime(),
          wt_est = paste(as.character(date_res), " ", wt_est) %>% 
-           as_datetime()) %>% 
+           as_datetime())
+
+# calculate missings
+nrow(wts) # 1888
+filter(wts, is.na(wt_yes)) %>% nrow # 648
+filter(wts, is.na(wt_yes)) %>% nrow/nrow(wts) # = 34 %
+
+
+# merge estimated wake-up times with original dataset
+full_sleep_df <- wts %>% 
   # fill the missing values for wake-up times with the estimated wake-up times
   mutate(wt_today = ifelse(is.na(wt_today), wt_est, wt_today) %>% as_datetime,
          wt_yes = ifelse(is.na(wt_yes), wt_yes_est, wt_yes) %>% as_datetime) %>% 
