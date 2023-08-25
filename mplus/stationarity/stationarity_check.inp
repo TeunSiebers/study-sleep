@@ -1,0 +1,33 @@
+TITLE:          
+Daytime, pre-bedtime, and post-bedtime smarphone use on sleep quality;
+Twolevel fixed effects model to check for stationarity;
+
+DATA:           
+FILE = 'phone.dat';
+
+VARIABLE:       
+NAMES = id day daytime prebed postbed sleep;    
+USEVARIABLES =  day sleep;
+CLUSTER = id; !The Between-Level ID variable; 
+
+ANALYSIS:       
+TYPE = twolevel; !Two-Level Model with paths that are latent variables
+ESTIMATOR = BAYES; !Lagged variables can only be estimated with Bayes in Mplus
+BITERATIONS = (5000); !Run at least 5,000 iterations of the MCMC algorithm
+PROCESSORS = 4; !Use 4 processors to increase the computational speed
+THIN = 2; !Set the thinning factor to 2 to increase stable estimations
+
+MODEL:          
+%within%                   
+    sleep ON day;
+    sleep;
+
+%between%                   
+    [sleep]; !mean intercept sleep quality
+
+    sleep; !intercept variance sleep quality
+
+    [day];             
+
+OUTPUT:         
+standardized tech8; 

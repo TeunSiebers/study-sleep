@@ -3,6 +3,5 @@
 .RData
 .Ruserdata
 data/
-mplus/
+_overig/
 Mplus Run Models.log
-scripts/explore/
