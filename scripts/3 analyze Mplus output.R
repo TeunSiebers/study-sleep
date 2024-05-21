@@ -11,6 +11,7 @@ library(tidyverse)
 library(MplusAutomation)
 library(glue)
 library(kableExtra)
+library(webshot2) # for exporting kables
 
 
 # create function to tidy Mplus data --------------------------------------
@@ -136,18 +137,18 @@ tidy_mplus <- function(path) {
     mutate(
       Beta = case_when(
         str_detect(Beta, "NA") ~ " ", 
-        p < .001 ~ paste0(Beta, "<sup>***</sup>"),
-        p < .01 ~ paste0(Beta, "<sup>**</sup> "),
-        p < .05 ~ paste0(Beta, "<sup>*</sup>  "),
+        p < .001 ~ paste0(Beta, "***"),
+        p < .01 ~ paste0(Beta, "** "),
+        p < .05 ~ paste0(Beta, "*  "),
         TRUE ~ paste0(Beta, "   ")),
       Beta = case_when(
         str_detect(Beta, "^\\-", negate = T) ~ paste0(" ", Beta),
         TRUE ~ Beta),
       B = case_when(
         str_detect(Beta, "[0-9]") ~ B,
-        p < .001 ~ paste0(B, "<sup>***</sup>"),
-        p < .01 ~ paste0(B, "<sup>**</sup> "),
-        p < .05 ~ paste0(B, "<sup>*</sup>  "),
+        p < .001 ~ paste0(B, "***"),
+        p < .01 ~ paste0(B, "** "),
+        p < .05 ~ paste0(B, "*  "),
         TRUE ~ paste0(B, "   ")),
       B = case_when(
         str_detect(B, "^\\-", negate = T) ~ paste0(" ", B),
@@ -193,9 +194,7 @@ combined <- combined %>%
 
 # format table
 models_table <- combined %>% 
-  kable(caption = "Table ...", 
-        align = "lllcc",
-        escape = F) %>%
+  kable(caption = "Table ...", align = "lllcc", escape = F, format = "html") %>%
   kable_classic(full_width = F, html_font = "") %>% 
   pack_rows(index = c("Within-person" = n_within_fixed_sens, 
                       "Between-person" = n_between_fixed_sens)) %>% 
@@ -207,25 +206,28 @@ models_table <- combined %>%
 
 models_table
 
-# exploratory analyses ----------------------------------------------------
+if(F) save_kable(models_table, file = "data/output/tables/table2_main analyses.html")
 
-out_game <- map_df(list.files(path = "mplus/game/", 
-                              pattern = "model_[123].out", 
-                              full.names = T), 
-                   ~tidy_mplus(.)) %>% mutate(analysis = "game")
+
+# exploratory analyses ----------------------------------------------------
 
 out_social <- map_df(list.files(path = "mplus/social/", 
                                 pattern = "model_[123].out", 
                                 full.names = T), 
                      ~tidy_mplus(.)) %>% mutate(analysis = "social")
 
+out_game <- map_df(list.files(path = "mplus/game/", 
+                              pattern = "model_[123].out", 
+                              full.names = T), 
+                   ~tidy_mplus(.)) %>% mutate(analysis = "game")
+
 out_video <- map_df(list.files(path = "mplus/video/", 
                                pattern = "model_[123].out", 
                                full.names = T), 
                     ~tidy_mplus(.)) %>%  mutate(analysis = "video")
 
-
-combined_expl <- bind_rows(out_game, out_social, out_video) %>% 
+# combine mplus output for all categories
+combined_expl <- bind_rows(out_social, out_game, out_video) %>% 
   filter(str_detect(effect, "[Vv]ariances|[Pp]hi|effe", negate = T)) %>% 
   arrange(desc(BW)) %>% 
   relocate(effect, analysis, random_fixed, BW) %>% 
@@ -264,27 +266,24 @@ models_table_expl <- combined_expl %>%
 
 models_table_expl
 
+if(F) save_kable(models_table_expl, file = "data/output/tables/table3_expl analyses.html")
+
 
 # sensitivity analyses ----------------------------------------------------
 
 # run function on all models for sensitivity analyses
 
 # smartphone
-out_phone_24h <- map_df(list.files(path = "mplus/phone_24h/", 
-                                  pattern = "model_[123].out", 
-                                  full.names = T), 
-                       ~tidy_mplus(.)) %>% mutate(analysis = "phone_24h")
-out_phone_99th <- map_df(list.files(path = "mplus/phone_99th/", 
-                                   pattern = "model_[123].out", 
-                                   full.names = T), 
-                        ~tidy_mplus(.)) %>% mutate(analysis = "phone_99th")
-out_phone_99th_GP <- map_df(list.files(path = "mplus/phone_99th_GP/", 
-                                      pattern = "model_[123].out", 
-                                      full.names = T), 
-                           ~tidy_mplus(.)) %>%  mutate(analysis = "phone_99th_GP")
+phone_outliers <- map_df(list.files(path = "mplus/phone_outliers/", 
+                                       pattern = "model_[123].out", 
+                                       full.names = T), 
+                            ~tidy_mplus(.)) %>% mutate(analysis = "phone_outliers")
+# out_phone_24h <- map_df(list.files(path = "mplus/phone_24h/", 
+#                                   pattern = "model_[123].out", 
+#                                   full.names = T), 
+#                        ~tidy_mplus(.)) %>% mutate(analysis = "phone_24h")
 
-
-phone_sens <- bind_rows(out_phone_24h, out_phone_99th, out_phone_99th_GP) %>% 
+phone_sens <- bind_rows(phone_outliers) %>% # out_phone_24h can be included here
   filter(str_detect(effect, "[Vv]ariances|[Pp]hi|effe", negate = T)) %>% 
   arrange(desc(BW)) %>% 
   relocate(effect, analysis, random_fixed, BW) %>% 
@@ -323,6 +322,8 @@ models_table_phone_sens <- phone_sens %>%
 
 models_table_phone_sens
 
+if(F) save_kable(models_table_phone_sens, file = "data/output/tables/tableA_sens analyses.html")
+
 
 # sensitivity analysis per app category -----------------------------------
 
@@ -331,36 +332,35 @@ out_game_24h <- map_df(list.files(path = "mplus/game_24h/",
                                   pattern = "model_[123].out", 
                                   full.names = T), 
                        ~tidy_mplus(.)) %>% mutate(analysis = "game_24h")
-out_game_99th <- map_df(list.files(path = "mplus/game_99th/", 
+out_game_outliers <- map_df(list.files(path = "mplus/game_outliers/", 
                                    pattern = "model_[123].out", 
                                    full.names = T), 
-                        ~tidy_mplus(.)) %>% mutate(analysis = "game_99th")
+                        ~tidy_mplus(.)) %>% mutate(analysis = "game_outliers")
 
 # social
 out_social_24h <- map_df(list.files(path = "mplus/social_24h/", 
                                     pattern = "model_[123].out", 
                                     full.names = T), 
                          ~tidy_mplus(.)) %>% mutate(analysis = "social_24h")
-out_social_99th <- map_df(list.files(path = "mplus/social_99th/", 
+out_social_outliers <- map_df(list.files(path = "mplus/social_outliers/", 
                                      pattern = "model_[123].out", 
                                      full.names = T), 
-                          ~tidy_mplus(.)) %>% mutate(analysis = "social_99th")
+                          ~tidy_mplus(.)) %>% mutate(analysis = "social_outliers")
 
 # video
 out_video_24h <- map_df(list.files(path = "mplus/video_24h/", 
                                    pattern = "model_[123].out", 
                                    full.names = T), 
                         ~tidy_mplus(.)) %>%  mutate(analysis = "video_24h")
-out_video_99th <- map_df(list.files(path = "mplus/video_99th/", 
+out_video_outliers <- map_df(list.files(path = "mplus/video_outliers/", 
                                     pattern = "model_[123].out", 
                                     full.names = T), 
-                         ~tidy_mplus(.)) %>%  mutate(analysis = "video_99th")
+                         ~tidy_mplus(.)) %>%  mutate(analysis = "video_outliers")
 
 
-
-appcat_sens <- bind_rows(out_game_24h, out_game_99th,
-                           out_social_24h, out_social_99th,
-                           out_video_24h, out_video_99th) %>% 
+appcat_sens <- bind_rows(out_game_24h, out_game_outliers,
+                           out_social_24h, out_social_outliers,
+                           out_video_24h, out_video_outliers) %>% 
   filter(str_detect(effect, "[Vv]ariances|[Pp]hi|effe", negate = T)) %>% 
   arrange(desc(BW)) %>% 
   relocate(effect, analysis, random_fixed, BW) %>% 
@@ -397,4 +397,11 @@ models_table_appcat_sens <- appcat_sens %>%
            symbol_manual = c("$^{*}$", "$^{**}$", "$^{***}$"),
            footnote_as_chunk = TRUE)
   
-models_table_sens
+models_table_appcat_sens
+
+
+# all tables --------------------------------------------------------------
+
+models_table 
+models_table_expl
+models_table_phone_sens

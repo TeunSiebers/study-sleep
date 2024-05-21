@@ -15,28 +15,21 @@ library(psych)
 library(Matrix)
 library(glue)
 library(data.table)
+library(hrbrthemes)
 library(knitr) # for formatting table
 library(kableExtra) # for formatting table
 
 
-# create function to rename user_id,
-flatten <- function(...) {
-  rename(..., chrom = user_id) %>% 
-    bed_merge() %>%
-    mutate_at(vars(start, end), as_datetime) %>% 
-    mutate(duration = as.double(end - start)) %>% 
-    ungroup() %>% 
-    rename(user_id = chrom)
-}
+# define app categories ---------------------------------------------------
 
-# define participants
-participants <- read.table("data/processed/user_ids.txt")$x
-
-# define categories
+# social media
 social_media <- c("Instagram", "WhatsApp Messenger", "Snapchat", "TikTok", 
                   "Twitter", "Facebook", "Messenger", "Reddit", 
                   "Discord: Talk, Chat & Hang Out")
 
+# game apps are defined by: app_cat == "Gaming"
+
+# video players and entertainment
 video_ent <- c("YouTube", "Netflix", "Twitch: Live Game Streaming", 
                "Disney+", "Videoland", "Ziggo GO", "V LIVE", "HUAWEI Video", 
                "Pokémon TV", "MTV Play", "Amazon Prime Video", "NPO")
@@ -49,23 +42,39 @@ df <- read_csv("data/processed/df_app.csv") %>%
   mutate_at(vars(start, end), as_datetime) %>% 
   mutate(duration = as.numeric(duration)) %>% 
   arrange(user_id, start) %>% 
-  filter(user_id %in% participants) # 745,947 obs.; N = 155
+  filter(user_id %in% read.table("data/processed/user_ids.txt")$x) # 745,947 obs.; N = 155
 
-
+# number of social media app users
 df %>% 
   filter(app_name %in% social_media) %>%
   pull(user_id) %>%
-  unique() %>% length()
+  unique() %>% length() # 155 participants
 
+# number of game app users
 df %>% 
   filter(app_cat == "Gaming") %>%
   pull(user_id) %>%
-  unique() %>% length()
+  unique() %>% length() # 141 participants
 
+# number of video player app users
 df %>% 
   filter(app_name %in% video_ent) %>%
   pull(user_id) %>%
-  unique() %>% length()
+  unique() %>% length() # 155 participants
+
+
+# remove outliers ---------------------------------------------------------
+
+# exclude app activities that lasted longer than the 0.1% longest app 
+# activities in the Video and Gaming category (i.e., longer than 4.8 hours)
+outlier_threshold <- df %>% 
+  filter(app_cat == "Gaming" | app_name %in% video_ent) %>% 
+  .$duration %>% 
+  quantile(.999)
+
+# remove outliers from dataset
+df_clean <- df %>% 
+  filter(duration < outlier_threshold) # 745,706 obs.; N = 155
 
 
 # timeframe data ----------------------------------------------------------
@@ -76,8 +85,9 @@ timeframes <- read_csv("data/processed/timeframes.csv") %>%
   mutate(bt_yes = hour(bt_yes) + (minute(bt_yes)/60),
          wt_today = hour(wt_today) + (minute(wt_today)/60),
          weekend = ifelse(weekday %in% c("za", "zo"), "weekend day", "weekday")) %>% 
-  filter(user_id %in% participants) # 155 obs.; N = 155
+  filter(user_id %in% read.table("data/processed/user_ids.txt")$x) # 155 obs.; N = 155
 
+# average bedtimes and wake-up times on weekdays and weekend days 
 timeframes %>% 
   mutate(bt_yes = ifelse(bt_yes < 15, bt_yes + 24, bt_yes)) %>% 
   group_by(weekend) %>% 
@@ -86,6 +96,16 @@ timeframes %>%
 
 
 # daily smartphone use ----------------------------------------------------
+
+# create function to rename user_id to chrom and flatten the data
+flatten <- function(...) {
+  rename(..., chrom = user_id) %>% 
+    bed_merge() %>%
+    mutate_at(vars(start, end), as_datetime) %>% 
+    mutate(duration = as.double(end - start)) %>% 
+    ungroup() %>% 
+    rename(user_id = chrom)
+}
 
 # create function to split app activities per day
 generate_daily_time <- function(x, y) {
@@ -99,7 +119,7 @@ generate_daily_time <- function(x, y) {
 }
 
 # split smartphone use at every day
-day_split <- df %>% 
+day_split <- df_clean %>% 
   flatten %>% 
   mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
   tidyr::unnest(time) %>%
@@ -111,9 +131,8 @@ daily_time <- day_split %>%
   group_by(user_id, as_date(start_d)) %>% 
   summarise(sum_duration = sum(duration))
 
-mean(daily_time$sum_duration) %>% seconds_to_period # Mean = 6 hr 25 min
-sd(daily_time$sum_duration) %>% seconds_to_period # SD = 3 hr 35 min
-
+mean(daily_time$sum_duration) %>% seconds_to_period # Mean = 6 hr 08 min
+sd(daily_time$sum_duration) %>% seconds_to_period # SD = 2 hr 58 min
 
 # create plot to visualize time spent on smartphone per day
 ggplot(data = daily_time) +
@@ -127,7 +146,7 @@ ggplot(data = daily_time) +
 # daily use of app categories --------------------------------------------
 
 # split smartphone use at every day
-day_split_social <- df %>% 
+day_split_social <- df_clean %>% 
   filter(app_name %in% social_media) %>% 
   flatten %>% 
   mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
@@ -137,7 +156,7 @@ day_split_social <- df %>%
   mutate(app_type = "social media")
 
 # split smartphone use at every day
-day_split_game <- df %>% 
+day_split_game <- df_clean %>% 
   filter(app_cat == "Gaming") %>% 
   flatten %>% 
   mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
@@ -147,7 +166,7 @@ day_split_game <- df %>%
   mutate(app_type = "game")
 
 # split smartphone use at every day
-day_split_video <- df %>% 
+day_split_video <- df_clean %>% 
   filter(app_name %in% video_ent) %>% 
   flatten %>% 
   mutate(time = purrr::map2(start, end, generate_daily_time)) %>% 
@@ -157,111 +176,111 @@ day_split_video <- df %>%
   mutate(app_type = "video player")
 
 
-# hourly smartphone use ---------------------------------------------------
-
-# create function to split app activities per hour
-generate_hourly_time <- function(x, y) {
-  if(hour(x) == hour(y)){
-    tibble(start_h = x, end_h = y)
-  } else {
-    end <- ceiling_date(x, 'hour')
-    end2 <- seq(end, floor_date(y, 'hour'), by = 'hour')
-    tibble(start_h = c(x, end2), end_h = c(end2, y))
-  }
-}
-
-# split smartphone use at every hour of the day
-hour_split <- df %>% 
-  flatten %>% 
-  mutate(time = purrr::map2(start, end, generate_hourly_time)) %>% 
-  tidyr::unnest(time) %>%
-  mutate(duration = as.numeric(end_h - start_h)) %>%
-  select(-start, -end)
-
-# create hourly smartphone use durations
-use_per_hour <- hour_split %>% 
-  filter(as_date(start_h) >= "2020-06-02") %>% 
-  filter(duration <= 3600) %>% 
-  group_by(hour = hour(start_h), 
-           weekday = factor(weekdays(start_h, T), 
-                            levels = c("ma", "di", "wo", "do", "vr", "za", "zo"))) %>% 
-  summarise(use_time = sum(duration)) %>% 
-  mutate(weekend = ifelse(weekday %in% c("za", "zo"), "weekend day", "weekday"))
-
-# visualize how smartphone use and bed- and wakeup times are distributed across the day
-ggplot() + 
-  geom_vline(data = timeframes, aes(xintercept = bt_yes), alpha = .05, color = "black") +
-  geom_vline(data = timeframes, aes(xintercept = wt_today), alpha = .05, color = "orange") +
-  geom_line(data = use_per_hour,
-            aes(x = hour+0.5, y = use_time, color = weekday),
-               alpha = 1, stat = "identity") +
-  scale_y_continuous(name = "smartphone activity in sample", breaks = NULL) + 
-  scale_x_continuous(breaks = seq(0, 24, 1), expand = c(.02,.02),
-                     name = "hour of the day", labels = function(x) str_c(x, ':00')) + 
-  geom_text(data = timeframes, aes(x = 1, y = 700000, label = weekend), 
-            hjust = "left")+
-  guides(colour = guide_legend(nrow = 1), title = NULL) +
-  theme_ipsum() +
-  facet_wrap(~weekend, ncol = 1) +
-  theme(legend.position = "top", legend.box.just = "left",
-        axis.text.x = element_text(size = 8, angle = 45, vjust = 0.5),
-        panel.grid.major = element_blank(),
-        panel.grid.minor = element_blank(),
-        panel.spacing = unit(0.5, "lines"),
-        legend.title= element_blank(),
-        strip.text.x = element_blank())
-
-
-# hourly use of app categories --------------------------------------------
-
-# split smartphone use at every hour of the day
-hour_split_social <- df %>% 
-  filter(app_name %in% social_media) %>% 
-  flatten %>% 
-  mutate(time = purrr::map2(start, end, generate_hourly_time)) %>% 
-  tidyr::unnest(time) %>%
-  mutate(duration = as.numeric(end_h - start_h)) %>%
-  select(-start, -end) %>% 
-  mutate(app_type = "social media")
-
-# split smartphone use at every hour of the day
-hour_split_game <- df %>% 
-  filter(app_cat == "Gaming") %>% 
-  flatten %>% 
-  mutate(time = purrr::map2(start, end, generate_hourly_time)) %>% 
-  tidyr::unnest(time) %>%
-  mutate(duration = as.numeric(end_h - start_h)) %>%
-  select(-start, -end) %>% 
-  mutate(app_type = "game")
-
-# split smartphone use at every hour of the day
-hour_split_video <- df %>% 
-  filter(app_name %in% video_ent) %>% 
-  flatten %>% 
-  mutate(time = purrr::map2(start, end, generate_hourly_time)) %>% 
-  tidyr::unnest(time) %>%
-  mutate(duration = as.numeric(end_h - start_h)) %>%
-  select(-start, -end) %>% 
-  mutate(app_type = "video player")
-
-# create hourly smartphone use durations
-appcat_per_hour <- bind_rows(hour_split_social, hour_split_game, hour_split_video) %>% 
-  filter(as_date(start_h) >= "2020-06-02") %>% 
-  filter(duration <= 3600) %>% 
-  group_by(hour = hour(start_h),
-           app_type) %>% 
-  summarise(use_time = sum(duration))
-
-# create ggplot
-appcat_per_hour %>% 
-  ggplot() + 
-  geom_density(aes(x = hour + 0.5, y = use_time, color = app_type), 
-               stat = 'identity') +
-  scale_y_continuous(name = "app activity in sample", breaks = 0, labels = NULL) + 
-  scale_x_continuous(breaks = seq(0, 24, 2), expand = c(.05,.05),
-                     name = "hour of the day", labels = function(x) str_c(x, ':00')) + 
-  labs(x = "hour of the day", y = "app activity in sample", color = "App category") +
-  theme_ipsum()
+# # hourly smartphone use ---------------------------------------------------
+# 
+# # create function to split app activities per hour
+# generate_hourly_time <- function(x, y) {
+#   if(hour(x) == hour(y)){
+#     tibble(start_h = x, end_h = y)
+#   } else {
+#     end <- ceiling_date(x, 'hour')
+#     end2 <- seq(end, floor_date(y, 'hour'), by = 'hour')
+#     tibble(start_h = c(x, end2), end_h = c(end2, y))
+#   }
+# }
+# 
+# # split smartphone use at every hour of the day
+# hour_split <- df_clean %>%
+#   flatten %>%
+#   mutate(time = purrr::map2(start, end, generate_hourly_time)) %>%
+#   tidyr::unnest(time) %>%
+#   mutate(duration = as.numeric(end_h - start_h)) %>%
+#   select(-start, -end)
+# 
+# # create hourly smartphone use durations
+# use_per_hour <- hour_split %>%
+#   filter(as_date(start_h) >= "2020-06-02") %>%
+#   filter(duration <= 3600) %>%
+#   group_by(hour = hour(start_h),
+#            weekday = factor(weekdays(start_h, T),
+#                             levels = c("ma", "di", "wo", "do", "vr", "za", "zo"))) %>%
+#   summarise(use_time = sum(duration)) %>%
+#   mutate(weekend = ifelse(weekday %in% c("za", "zo"), "weekend day", "weekday"))
+# 
+# # visualize how smartphone use and bed- and wakeup times are distributed across the day
+# ggplot() +
+#   geom_vline(data = timeframes, aes(xintercept = bt_yes), alpha = .05, color = "black") +
+#   geom_vline(data = timeframes, aes(xintercept = wt_today), alpha = .05, color = "orange") +
+#   geom_line(data = use_per_hour,
+#             aes(x = hour+0.5, y = use_time, color = weekday),
+#                alpha = 1, stat = "identity") +
+#   scale_y_continuous(name = "smartphone activity in sample", breaks = NULL) +
+#   scale_x_continuous(breaks = seq(0, 24, 1), expand = c(.02,.02),
+#                      name = "hour of the day", labels = function(x) str_c(x, ':00')) +
+#   geom_text(data = timeframes, aes(x = 1, y = 700000, label = weekend),
+#             hjust = "left")+
+#   guides(colour = guide_legend(nrow = 1), title = NULL) +
+#   theme_ipsum() +
+#   facet_wrap(~weekend, ncol = 1) +
+#   theme(legend.position = "top", legend.box.just = "left",
+#         axis.text.x = element_text(size = 8, angle = 45, vjust = 0.5),
+#         panel.grid.major = element_blank(),
+#         panel.grid.minor = element_blank(),
+#         panel.spacing = unit(0.5, "lines"),
+#         legend.title= element_blank(),
+#         strip.text.x = element_blank())
+# 
+# 
+# # hourly use of app categories --------------------------------------------
+# 
+# # split smartphone use at every hour of the day
+# hour_split_social <- df_clean %>%
+#   filter(app_name %in% social_media) %>%
+#   flatten %>%
+#   mutate(time = purrr::map2(start, end, generate_hourly_time)) %>%
+#   tidyr::unnest(time) %>%
+#   mutate(duration = as.numeric(end_h - start_h)) %>%
+#   select(-start, -end) %>%
+#   mutate(app_type = "social media")
+# 
+# # split smartphone use at every hour of the day
+# hour_split_game <- df_clean %>%
+#   filter(app_cat == "Gaming") %>%
+#   flatten %>%
+#   mutate(time = purrr::map2(start, end, generate_hourly_time)) %>%
+#   tidyr::unnest(time) %>%
+#   mutate(duration = as.numeric(end_h - start_h)) %>%
+#   select(-start, -end) %>%
+#   mutate(app_type = "game")
+# 
+# # split smartphone use at every hour of the day
+# hour_split_video <- df_clean %>%
+#   filter(app_name %in% video_ent) %>%
+#   flatten %>%
+#   mutate(time = purrr::map2(start, end, generate_hourly_time)) %>%
+#   tidyr::unnest(time) %>%
+#   mutate(duration = as.numeric(end_h - start_h)) %>%
+#   select(-start, -end) %>%
+#   mutate(app_type = "video player")
+# 
+# # create hourly smartphone use durations
+# appcat_per_hour <- bind_rows(hour_split_social, hour_split_game, hour_split_video) %>%
+#   filter(as_date(start_h) >= "2020-06-02") %>%
+#   filter(duration <= 3600) %>%
+#   group_by(hour = hour(start_h),
+#            app_type) %>%
+#   summarise(use_time = sum(duration))
+# 
+# # create ggplot
+# appcat_per_hour %>%
+#   ggplot() +
+#   geom_density(aes(x = hour + 0.5, y = use_time, color = app_type),
+#                stat = 'identity') +
+#   scale_y_continuous(name = "app activity in sample", breaks = 0, labels = NULL) +
+#   scale_x_continuous(breaks = seq(0, 24, 2), expand = c(.05,.05),
+#                      name = "hour of the day", labels = function(x) str_c(x, ':00')) +
+#   labs(x = "hour of the day", y = "app activity in sample", color = "App category") +
+#   theme_ipsum()
   
 
 # descriptives per category -----------------------------------------------
@@ -287,7 +306,7 @@ timeframe_per_cat %>%
   mutate_if(is.period, ~round(., 0))
 
 
-# ICCs --------------------------------------------------------------------
+# descriptives -----------------------------------------------------------
 
 # create a function to extract descriptives from specified variables
 fun_descriptives <- function(x, data = phone) {
@@ -296,17 +315,18 @@ fun_descriptives <- function(x, data = phone) {
          mean = mean(pull(data, all_of(x)), na.rm = T),
          sd = sd(pull(data, all_of(x)), na.rm = T))
          # range = paste0(min(pull(data, all_of(x)), na.rm = T) %>% round(2), "-", max(pull(data, all_of(x)), na.rm = T) %>% round(2)),
-         # median = median(pull(data, all_of(x)), na.rm = T)) 
+         # median = median(pull(data, all_of(x)), na.rm = T))
 }
 
 # map function to obtain descriptives from ESM variables
-descriptives <- phone %>% 
+descriptives <- timeframe_per_cat %>% 
   select(daytime_use, prebed_use, postbed_use, sleep_qual) %>% 
   names %>% # specify variables
   map_df(fun_descriptives) %>% 
-  mutate_if(is.numeric, ~round(., 2))
+  mutate_if(is.numeric, ~seconds_to_period(round(., 2)*3600))
 
-# inspect variances and ICC (intra-class correlation) -------------------------------
+
+# inspect variances and ICC (intra-class correlation) ---------------------
 
 # create a function to extract within and between subject variance and ICC
 fun_variance <- function(x) {
@@ -435,12 +455,12 @@ table_footn_prep <- table_prep %>%
                          .)))))
 
 # format Table 1
-table <- table_footn_prep %>%
+table <- table_prep %>%
   rename(M = mean, SD = sd, 
          `Var(W)` = within_var, `Var(B)` = between_var, 
          ICC = icc) %>% 
   kable(caption = "Table. Descriptives and Correlations for All Study Variables", 
-        align = "lccccllllll",
+        align = "lrrccllllll",
         escape = F) %>%
   kable_classic(full_width = F, html_font = "Cambria") %>% 
   add_header_above(c(" " = 1, 

@@ -35,6 +35,34 @@ min(sample_details$age); max(sample_details$age) # 13.38 - 16.46
 table(sample_details$Sex) # anders: 1, jongen: 80, meisje: 74
 prop.table(table(sample_details$Sex)) # anders: 0.6%, jongen: 51,6%, meisje: 47,7%
 
+table(sample_details$EduLevel) # VMBO: 60 Havo: 53 VWO: 42
+prop.table(table(sample_details$EduLevel)) # VMBO: 38.71% Havo: 34.19% VWO: 27.10%
+
+
+# compare to demographics of excluded participants ------------------------
+
+# read keyfile and filter excluded participants
+excluded <- read_csv2("data/input/cleaned esm data - wave2_no attrition.csv") %>% 
+  filter(ID %not_in% read.table("data/processed/user_ids.txt")$x)
+
+# select only relevant variables
+excluded_details <- excluded %>% 
+  select(ID, Sex, BirthD, ETH01, ETH03, EduLevel) %>% 
+  unique() %>% 
+  mutate(age = time_length(difftime(as_date("2020-06-02"), BirthD), 
+                           unit = "years"))
+
+#  155 obs. N = 155
+mean(excluded_details$age) # 14.69
+sd(excluded_details$age) # 0.71
+min(excluded_details$age); max(excluded_details$age) # 13.30 - 16.80
+
+table(excluded_details$Sex) # jongen: 52, meisje: 105
+prop.table(table(excluded_details$Sex)) # jongen: 33,1%, meisje: 66,9%
+
+table(excluded_details$EduLevel) # VMBO: 56 Havo: 51 VWO: 50
+prop.table(table(excluded_details$EduLevel)) # VMBO: 35.67% Havo: 32.48% VWO: 31.85%
+
 
 # calculate compliance ----------------------------------------------------
 

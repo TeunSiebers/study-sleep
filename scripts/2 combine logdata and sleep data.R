@@ -3,7 +3,10 @@
 # title:           2 combine logdata and sleep data.R
 #
 # description:
-# ...
+# The script is used to merge all the datasets (for main, exploratory, and
+# sensitivity analyses) with the timeframes and sleep data for every 
+# individual. Also, the datasets for Mplus analyses are created in the 
+# designated mplus folder. Lastly, the Mplus scripts are automatically run.
 #
 # bt_yes = bedtime yesterday
 # wt_today = wake-up time today

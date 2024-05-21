@@ -13,6 +13,9 @@ library(ggridges)
 library(scales)
 library(ggh4x)
 
+# write graphs or not
+W <- F
+
 # define participants
 participants <- read.table("data/processed/user_ids.txt")$x
 
@@ -101,7 +104,7 @@ figure_1 <- prep_figures %>%
   geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
-  scale_fill_manual(labels = c("Q1: 1.2 - 4.8 hr", "Q2: 4.8 - 6.3 hr", "Q3: 6.3 - 7.8 hr", "Q4: 7.8 - 15.7 hr"),
+  scale_fill_manual(labels = c("Q1: 1.2 - 4.7 hr", "Q2: 4.7 - 5.9 hr", "Q3: 5.9 - 7.5 hr", "Q4: 7.5 - 14.9 hr"),
                     values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
   scale_x_continuous(name = "Average time spent on smartphone per day (in hours)",
                      breaks = pretty_breaks(8), limits = c(0, NA)) + 
@@ -138,7 +141,7 @@ figure_2a <- prep_figures %>%
   geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
-  scale_fill_manual(labels = c("Q1: 1.2 - 4.3 hr", "Q2: 4.3 - 5.2 hr", "Q3: 5.2 - 6.7 hr", "Q4: 6.7 - 13.2 hr"),
+  scale_fill_manual(labels = c("Q1: 1.2 - 4.0 hr", "Q2: 4.0 - 5.1 hr", "Q3: 5.1 - 6.5 hr", "Q4: 6.5 - 12.8 hr"),
                     values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
   scale_x_continuous(name = "Average time spent on smartphone per day (in hours)",
                      breaks = pretty_breaks(8), limits = c(0, NA)) + 
@@ -174,7 +177,7 @@ figure_2b <- prep_figures %>%
   geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
-  scale_fill_manual(labels = c("Q1: 1 - 16 min", "Q2: 16 - 24 min", "Q3: 24 - 33 min", "Q4: 33 - 53 min"),
+  scale_fill_manual(labels = c("Q1: 1 - 15 min", "Q2: 15 - 23 min", "Q3: 23 - 32 min", "Q4: 32 - 53 min"),
                     values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
   scale_x_continuous(name = "Average time spent on smartphone per day (in minutes)",
                      breaks = pretty_breaks(8), limits = c(0, 60)) + 
@@ -209,7 +212,7 @@ figure_2c <- prep_figures %>%
   geom_density_ridges_gradient(aes(x = duration, y = cat, fill = factor(after_stat(quantile))),
                                quantiles = c(.25, .5, .75), quantile_lines = F,
                                calc_ecdf = TRUE, scale = .95) +
-  scale_fill_manual(labels = c("Q1: 0 - 6 min", "Q2: 6 - 22 min", "Q3: 22 - 55 min", "Q4: 55 - 284 min"),
+  scale_fill_manual(labels = c("Q1: 0 - 5 min", "Q2: 5 - 19 min", "Q3: 19 - 41 min", "Q4: 41 - 154 min"),
                     values = c("#cfd8dc","#78909c","#546e7a","#263238")) +
   scale_x_continuous(name = "Average time spent on smartphone per day (in minutes)",
                      breaks = seq(0, 360, 30), limits = c(0, NA)) + 
@@ -267,115 +270,115 @@ if(W) ggsave(plot = figure_2, "data/output/figures/Figure 2 - app density.svg", 
 
 
 # create app usage plot ---------------------------------------------------
-
-sample_user <- c(191, 30, 271, 259, 65, 265, 222, 150, 288, 100)
-
-start_int <- as_datetime("2020-06-4 9:00:00")
-period <- ddays(1) 
-
-sample_days <- as.interval(start_int, start_int + period)
-
-
-figure <- ggplot() +
-  geom_rect(data = timeframe %>%
-              filter(user_id %in% sample_user,
-                     bt_yes %within% sample_days),
-            mapping = aes(xmin = bt_yes-hours(1), xmax = bt_yes, ymin = -Inf, ymax = Inf),
-            alpha = .1) +
-  geom_rect(data = timeframe %>%
-              filter(user_id %in% sample_user,
-                     bt_yes %within% sample_days),
-            mapping = aes(xmin = bt_yes, xmax = wt_today, ymin = -Inf, ymax = Inf),
-            alpha = .3) +
-  geom_vline(xintercept = as_datetime("2020-06-5 00:00:00")) +
-  geom_linerange(data = df %>%
-                   filter(user_id %in% sample_user,
-                          start %within% sample_days,
-                          cat == "other"),
-                 mapping = aes(xmin = start, xmax = end,
-                               y = as.factor(user_id), color = cat),
-                 size = 5) +
-  geom_linerange(data = df %>%
-                   filter(user_id %in% sample_user,
-                          start %within% sample_days,
-                          cat %in% c("social", "game", "video")),
-                 mapping = aes(xmin = start, xmax = end,
-                               y = as.factor(user_id), color = cat),
-                 size = 5) +
-  labs(y = "Participant", color = "App category:") + 
-  scale_x_datetime(name = "Time",
-                   breaks = seq(as.POSIXct(start_int),
-                                as.POSIXct(start_int + period), "3 hours"),
-                   date_labels = "%H:%M h\n%e %b",
-                   minor_breaks = "1 hours",
-                   expand = c(0, 0),
-                   limits = c(
-                     as.POSIXct(start_int),
-                     as.POSIXct(start_int + period)
-                   )) +
-  scale_color_manual(breaks = c("social", "game", "video", "other"),
-                     values = c(social = "#FC4E07",
-                                game = "#E7B800",
-                                video = "#00AFBB",
-                                other = "grey39")) +
-  scale_y_discrete(limits=rev) +
-  facet_wrap(~as.factor(user_id), ncol = 1, scales = "free_y") + 
-  theme_minimal() +
-  theme(strip.text.x = element_blank(),
-        panel.spacing = unit(0.0,'lines'),
-        legend.position = "top", legend.justification ="right",
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank())
-
-# strip whitespace
-figure <- figure + theme(plot.margin = grid::unit(c(0,6,1,1), "mm"))
-figure
-
-# save plot
-if(W) ggsave(plot = figure, "data/output/figures/Figure - app use.svg", width = 22, height = 11, units = "cm")
-
-
-# create co-fluctuation plot ----------------------------------------------
-
-selection <- sample(unique(cofluc_df$user_id), 3)
-selection <- sample(c(108, 191, 55, 114, 30, 55, 191, 161), 4)
-
-cofluc_df %>% 
-  mutate(variable = case_when(variable == "sleep_qual" ~ "sleep quality",
-                              variable == "daytime_use" ~ "daytime use",
-                              variable == "prebed_use" ~ "pre-bedtime use",
-                              variable == "postbed_use" ~ "post-bedtime use"),
-         cat = case_when(cat == "social" ~ "social media app",
-                         cat == "game" ~ "game app",
-                         cat == "video" ~ "video player app",
-                         cat == "sleep_qual" ~ "sleep quality")) %>% 
-  filter(user_id %in% selection, cat != "phone") %>% 
-  ggplot() +
-  geom_line(aes(x = study_day, y = value, color = cat)) +
-  scale_color_manual(values = c("black",
-                                "social media app" = "#FC4E07",
-                                "game app" = "#E7B800",
-                                "video player app" = "#00AFBB")) +
-  facet_grid2(variable ~ paste("ID:", as.factor(user_id)), 
-              scales = "free_y", 
-              strip = strip_themed(text_y = elem_list_text(angle = c(0)),)) +
-  scale_x_continuous(name = "study day",
-                     minor_breaks = seq(1,21,1), breaks = seq(1,21, 5)) +
-  scale_y_continuous(expand = expansion(mult = 0.1)) +
-  theme_bw() +
-  theme(panel.spacing = unit(c(0),'lines'),
-        panel.spacing.y = unit(c(0, 0, 1),'lines'),
-        legend.position = "top", legend.justification ="right",
-        legend.title=element_blank())
-
-
-cofluc_df %>% 
-  filter(cat != "phone") %>% 
-  ggplot() + 
-  geom_smooth(aes(x = duration, y = sleep_qual, color = cat)) +
-  labs(x = "duration (hours)", y = "sleep quality") +
-  scale_color_manual(values = c(social = "#FC4E07",
-                                game = "#E7B800",
-                                video = "#00AFBB")) +
-  facet_grid(cat~variable, scales = "free_x") +
-  theme_minimal()
+# 
+# sample_user <- c(191, 30, 271, 259, 65, 265, 222, 150, 288, 100)
+# 
+# start_int <- as_datetime("2020-06-4 9:00:00")
+# period <- ddays(1) 
+# 
+# sample_days <- as.interval(start_int, start_int + period)
+# 
+# 
+# figure <- ggplot() +
+#   geom_rect(data = timeframe %>%
+#               filter(user_id %in% sample_user,
+#                      bt_yes %within% sample_days),
+#             mapping = aes(xmin = bt_yes-hours(1), xmax = bt_yes, ymin = -Inf, ymax = Inf),
+#             alpha = .1) +
+#   geom_rect(data = timeframe %>%
+#               filter(user_id %in% sample_user,
+#                      bt_yes %within% sample_days),
+#             mapping = aes(xmin = bt_yes, xmax = wt_today, ymin = -Inf, ymax = Inf),
+#             alpha = .3) +
+#   geom_vline(xintercept = as_datetime("2020-06-5 00:00:00")) +
+#   geom_linerange(data = df %>%
+#                    filter(user_id %in% sample_user,
+#                           start %within% sample_days,
+#                           cat == "other"),
+#                  mapping = aes(xmin = start, xmax = end,
+#                                y = as.factor(user_id), color = cat),
+#                  size = 5) +
+#   geom_linerange(data = df %>%
+#                    filter(user_id %in% sample_user,
+#                           start %within% sample_days,
+#                           cat %in% c("social", "game", "video")),
+#                  mapping = aes(xmin = start, xmax = end,
+#                                y = as.factor(user_id), color = cat),
+#                  size = 5) +
+#   labs(y = "Participant", color = "App category:") + 
+#   scale_x_datetime(name = "Time",
+#                    breaks = seq(as.POSIXct(start_int),
+#                                 as.POSIXct(start_int + period), "3 hours"),
+#                    date_labels = "%H:%M h\n%e %b",
+#                    minor_breaks = "1 hours",
+#                    expand = c(0, 0),
+#                    limits = c(
+#                      as.POSIXct(start_int),
+#                      as.POSIXct(start_int + period)
+#                    )) +
+#   scale_color_manual(breaks = c("social", "game", "video", "other"),
+#                      values = c(social = "#FC4E07",
+#                                 game = "#E7B800",
+#                                 video = "#00AFBB",
+#                                 other = "grey39")) +
+#   scale_y_discrete(limits=rev) +
+#   facet_wrap(~as.factor(user_id), ncol = 1, scales = "free_y") + 
+#   theme_minimal() +
+#   theme(strip.text.x = element_blank(),
+#         panel.spacing = unit(0.0,'lines'),
+#         legend.position = "top", legend.justification ="right",
+#         panel.grid.major.y = element_blank(),
+#         panel.grid.minor.y = element_blank())
+# 
+# # strip whitespace
+# figure <- figure + theme(plot.margin = grid::unit(c(0,6,1,1), "mm"))
+# figure
+# 
+# # save plot
+# if(W) ggsave(plot = figure, "data/output/figures/Figure - app use.svg", width = 22, height = 11, units = "cm")
+# 
+# 
+# # create co-fluctuation plot ----------------------------------------------
+# 
+# selection <- sample(unique(cofluc_df$user_id), 3)
+# selection <- sample(c(108, 191, 55, 114, 30, 55, 191, 161), 4)
+# 
+# cofluc_df %>% 
+#   mutate(variable = case_when(variable == "sleep_qual" ~ "sleep quality",
+#                               variable == "daytime_use" ~ "daytime use",
+#                               variable == "prebed_use" ~ "pre-bedtime use",
+#                               variable == "postbed_use" ~ "post-bedtime use"),
+#          cat = case_when(cat == "social" ~ "social media app",
+#                          cat == "game" ~ "game app",
+#                          cat == "video" ~ "video player app",
+#                          cat == "sleep_qual" ~ "sleep quality")) %>% 
+#   filter(user_id %in% selection, cat != "phone") %>% 
+#   ggplot() +
+#   geom_line(aes(x = study_day, y = value, color = cat)) +
+#   scale_color_manual(values = c("black",
+#                                 "social media app" = "#FC4E07",
+#                                 "game app" = "#E7B800",
+#                                 "video player app" = "#00AFBB")) +
+#   facet_grid2(variable ~ paste("ID:", as.factor(user_id)), 
+#               scales = "free_y", 
+#               strip = strip_themed(text_y = elem_list_text(angle = c(0)),)) +
+#   scale_x_continuous(name = "study day",
+#                      minor_breaks = seq(1,21,1), breaks = seq(1,21, 5)) +
+#   scale_y_continuous(expand = expansion(mult = 0.1)) +
+#   theme_bw() +
+#   theme(panel.spacing = unit(c(0),'lines'),
+#         panel.spacing.y = unit(c(0, 0, 1),'lines'),
+#         legend.position = "top", legend.justification ="right",
+#         legend.title=element_blank())
+# 
+# 
+# cofluc_df %>% 
+#   filter(cat != "phone") %>% 
+#   ggplot() + 
+#   geom_smooth(aes(x = duration, y = sleep_qual, color = cat)) +
+#   labs(x = "duration (hours)", y = "sleep quality") +
+#   scale_color_manual(values = c(social = "#FC4E07",
+#                                 game = "#E7B800",
+#                                 video = "#00AFBB")) +
+#   facet_grid(cat~variable, scales = "free_x") +
+#   theme_minimal()
