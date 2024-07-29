@@ -294,7 +294,8 @@ timeframe_per_cat <- map_df(
       na.omit()
     }) 
 
-timeframe_per_cat %>% 
+# calculate time spent on smartphone per app per timeframe
+app_timeframe_table <- timeframe_per_cat %>% 
   mutate(cat = case_when(cat == "phone" ~ "1. smartphone",
                          cat == "social" ~ "2. social media app",
                          cat == "game" ~ "3. game app",
@@ -304,6 +305,9 @@ timeframe_per_cat %>%
                .funs = list(m = ~seconds_to_period(mean(.)*3600), 
                             sd = ~seconds_to_period(sd(.)*3600))) %>% 
   mutate_if(is.period, ~round(., 0))
+
+if(F) write_csv2(app_timeframe_table, 
+           file = "data/output/tables/descriptives_app_timeframe.csv")
 
 
 # descriptives -----------------------------------------------------------

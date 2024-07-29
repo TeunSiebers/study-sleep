@@ -52,7 +52,6 @@ cofluc_df <- map_df(
   arrange(user_id, study_day, variable)
 
 
-
 # prepare density distribution plots ----------------------------------------
 
 timeframe_per_cat <- map_df(list.files("data/output/", full.names = T, pattern = ".csv"),
